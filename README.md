@@ -9,6 +9,7 @@
 
 ## Features
 
+* **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use
 * **Blocking I/O Detection**: Automatically detects blocking I/O calls (file operations, network calls, subprocess, etc.) in your async code
 * **Stack Trace Capture**: Captures full stack traces to pinpoint exactly where blocking calls originate
 * **Severity Scoring**: Assigns severity scores to blocking events to help prioritize fixes
