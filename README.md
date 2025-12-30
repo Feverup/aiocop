@@ -278,7 +278,3 @@ Severity levels are determined by aggregate score:
 - `format_blocking_event(raw_event)` - Format a raw event
 - `get_blocking_events_dict()` - Get all monitored events with weights
 - `get_patched_functions()` - Get list of patched functions
-
-## Credits
-
-
