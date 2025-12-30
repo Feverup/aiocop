@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "aiocop"
 version = "0.1.0"
@@ -15,9 +19,7 @@ classifiers = [
     # TODO
 ]
 license = {text = "MIT"}
-dependencies = [
-  "typer"
-]
+dependencies = []
 requires-python = ">= 3.10"
 
 [project.optional-dependencies]
@@ -34,8 +36,6 @@ bugs = "https://github.com/Feverup/aiocop/issues"
 changelog = "https://github.com/Feverup/aiocop/blob/master/changelog.md"
 homepage = "https://github.com/Feverup/aiocop"
 
-[project.scripts]
-aiocop = "aiocop.cli:app"
 
 [tool.ty]
 # All rules are enabled as "error" by default; no need to specify unless overriding.
