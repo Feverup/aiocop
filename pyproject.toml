@@ -4,10 +4,12 @@ version = "0.1.0"
 description = "Non-intrusive monitoring for Python asyncio. Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop."
 readme = "README.md"
 authors = [
-  {name = "Fever Labs, Inc.", email = "engineering@feverup.com"}
+    {name = "Fever Labs, Inc.", email = "engineering@feverup.com"},
+    {name = "Adrià Ardila", email = "adria.ardila@feverup.com"}
 ]
 maintainers = [
-  {name = "Fever Labs, Inc.", email = "engineering@feverup.com"}
+    {name = "Fever Labs, Inc.", email = "engineering@feverup.com"},
+    {name = "Adrià Ardila", email = "adria.ardila@feverup.com"}
 ]
 classifiers = [
     # TODO
