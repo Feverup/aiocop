@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-    Non-intrusive monitoring for Python asyncio. Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop.
+    Non-intrusive monitoring for Python asyncio.<br>
+    Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop.
 </p>
 
 ## Features
