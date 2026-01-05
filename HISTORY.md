@@ -1,5 +1,9 @@
 # History
 
+## 0.1.3 (2026-01-05)
+
+* Add classifiers
+
 ## 0.1.2 (2026-01-05)
 
 * Small fixes
