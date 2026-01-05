@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/feverup/aiocop/master/docs/images/aiocop_logo.png" width="400" alt="AioCop Logo">
+  <img src="https://raw.githubusercontent.com/feverup/aiocop/master/docs/images/aiocop__logo.png" width="400" alt="AioCop Logo">
 </p>
 
 <p align="center">
