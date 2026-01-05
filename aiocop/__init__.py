@@ -85,9 +85,11 @@ Severity Levels:
     - THRESHOLD_HIGH (50): "high" severity (triggers exceptions if raise_on_violations)
 """
 
-__author__ = """Fever Labs, Inc."""
-__email__ = "engineering@feverup.com"
-__version__ = "0.1.0"
+from importlib.metadata import metadata
+
+_metadata = metadata("aiocop")
+__version__ = _metadata["Version"]
+__author__ = _metadata["Author-email"]
 
 from aiocop.core.audit_patcher import patch_audit_functions, get_patched_functions
 from aiocop.core.blocking_io import (
