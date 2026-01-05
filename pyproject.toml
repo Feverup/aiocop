@@ -16,7 +16,22 @@ maintainers = [
     {name = "Adrià Ardila", email = "adria.ardila@feverup.com"}
 ]
 classifiers = [
-    # TODO
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: System :: Monitoring",
+    "Framework :: AsyncIO",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+    "Environment :: Console",
 ]
 license = {text = "MIT"}
 dependencies = []
@@ -33,7 +48,7 @@ test = [
 
 [project.urls]
 bugs = "https://github.com/Feverup/aiocop/issues"
-changelog = "https://github.com/Feverup/aiocop/blob/master/changelog.md"
+changelog = "https://github.com/Feverup/aiocop/blob/master/HISTORY.md"
 homepage = "https://github.com/Feverup/aiocop"
 
 
