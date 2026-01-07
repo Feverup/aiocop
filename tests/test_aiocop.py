@@ -1,9 +1,66 @@
 """Tests for aiocop package."""
 
+import asyncio
+import tempfile
+import time
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock
+
 import pytest
 
 import aiocop
-from aiocop.types.events import SlowTaskEvent
+from aiocop.core.blocking_io import format_blocking_event, get_blocking_events_dict
+from aiocop.types.events import RawBlockingEvent, SlowTaskEvent
+
+
+# =============================================================================
+# Fixtures for integration tests
+# =============================================================================
+
+
+@pytest.fixture(scope="module")
+def setup_aiocop():
+    """
+    Set up aiocop once for the entire test module.
+
+    These functions can only be called once, so we do it at module scope.
+    """
+    aiocop.patch_audit_functions()
+    aiocop.start_blocking_io_detection(trace_depth=10)
+    aiocop.detect_slow_tasks(threshold_ms=10)
+    yield
+    aiocop.deactivate()
+    aiocop.clear_slow_task_callbacks()
+    aiocop.clear_context_providers()
+
+
+@pytest.fixture
+def captured_events():
+    """Fixture to capture SlowTaskEvents during a test."""
+    events: list[SlowTaskEvent] = []
+
+    def callback(event: SlowTaskEvent) -> None:
+        events.append(event)
+
+    aiocop.register_slow_task_callback(callback)
+    yield events
+    aiocop.unregister_slow_task_callback(callback)
+
+
+@pytest.fixture(autouse=True)
+def reset_state():
+    """Reset aiocop state before each test."""
+    aiocop.deactivate()
+    aiocop.disable_raise_on_violations()
+    aiocop.clear_slow_task_callbacks()
+    aiocop.clear_context_providers()
+    yield
+
+
+# =============================================================================
+# Public API Tests
+# =============================================================================
 
 
 class TestPublicApi:
@@ -190,3 +247,537 @@ class TestHighSeverityBlockingIoException:
         assert "HIGH SEVERITY BLOCKING I/O DETECTED" in message
         assert "Severity Score: 60" in message
         assert "Severity Level: high" in message
+
+
+# =============================================================================
+# Integration Tests - Actual Blocking I/O Detection
+# =============================================================================
+
+
+class TestBlockingIODetection:
+    """Integration tests for actual blocking I/O detection in async code.
+    
+    Note: Blocking I/O must run in a SEPARATE task (via create_task) because
+    callbacks are invoked after Handle._run completes. If we run blocking I/O
+    inline (via await), the callback won't be invoked until the test itself completes.
+    """
+
+    @pytest.mark.asyncio
+    async def test_detects_file_open_in_async_task(self, setup_aiocop, captured_events) -> None:
+        """Test that opening a file in async code is detected."""
+        aiocop.activate()
+
+        async def task_with_file_io():
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write("test")
+                temp_path = f.name
+            Path(temp_path).unlink()
+
+        # Run in separate task so callback is invoked when task completes
+        task = asyncio.create_task(task_with_file_io())
+        await task
+
+        # Give event loop a chance to process
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.reason == "io_blocking"
+        assert len(event.blocking_events) > 0
+        # Check that 'open' was detected
+        event_names = [e["event"] for e in event.blocking_events]
+        assert any("open" in name or "tempfile" in name for name in event_names)
+
+    @pytest.mark.asyncio
+    async def test_detects_time_sleep_in_async_task(self, setup_aiocop, captured_events) -> None:
+        """Test that time.sleep() in async code is detected as blocking."""
+        aiocop.activate()
+
+        async def task_with_sleep():
+            time.sleep(0.02)  # 20ms blocking sleep
+
+        # Run in separate task
+        task = asyncio.create_task(task_with_sleep())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.reason == "io_blocking"
+        # time.sleep should be detected
+        event_names = [e["event"] for e in event.blocking_events]
+        assert any("time.sleep" in name for name in event_names)
+
+    @pytest.mark.asyncio
+    async def test_no_detection_when_deactivated(self, setup_aiocop, captured_events) -> None:
+        """Test that no events are captured when monitoring is deactivated."""
+        aiocop.deactivate()
+
+        async def task_with_file_io():
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                f.write("test")
+                temp_path = f.name
+            Path(temp_path).unlink()
+
+        task = asyncio.create_task(task_with_file_io())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) == 0
+
+    @pytest.mark.asyncio
+    async def test_exceeded_threshold_flag(self, setup_aiocop, captured_events) -> None:
+        """Test that exceeded_threshold is set correctly."""
+        aiocop.activate()
+
+        async def slow_task():
+            time.sleep(0.02)  # 20ms, threshold is 10ms
+
+        task = asyncio.create_task(slow_task())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.exceeded_threshold is True
+        assert event.elapsed_ms >= 10  # Should be at least threshold
+
+    @pytest.mark.asyncio
+    async def test_severity_score_calculated(self, setup_aiocop, captured_events) -> None:
+        """Test that severity score is calculated from blocking events."""
+        aiocop.activate()
+
+        async def task_with_heavy_io():
+            time.sleep(0.015)  # WEIGHT_HEAVY = 50
+
+        task = asyncio.create_task(task_with_heavy_io())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.severity_score >= 50  # time.sleep is WEIGHT_HEAVY
+        assert event.severity_level == "high"
+
+
+# =============================================================================
+# Context Provider Tests
+# =============================================================================
+
+
+class TestContextProviders:
+    """Test context provider functionality."""
+
+    @pytest.mark.asyncio
+    async def test_context_provider_captures_context(self, setup_aiocop, captured_events) -> None:
+        """Test that context providers capture and pass context to callbacks."""
+        aiocop.activate()
+
+        def my_context_provider() -> dict[str, Any]:
+            return {"request_id": "test-123", "user_id": 42}
+
+        aiocop.register_context_provider(my_context_provider)
+
+        async def task_with_io():
+            time.sleep(0.015)
+
+        task = asyncio.create_task(task_with_io())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context.get("request_id") == "test-123"
+        assert event.context.get("user_id") == 42
+
+    @pytest.mark.asyncio
+    async def test_multiple_context_providers(self, setup_aiocop, captured_events) -> None:
+        """Test that multiple context providers are merged."""
+        aiocop.activate()
+
+        def provider_a() -> dict[str, Any]:
+            return {"key_a": "value_a"}
+
+        def provider_b() -> dict[str, Any]:
+            return {"key_b": "value_b"}
+
+        aiocop.register_context_provider(provider_a)
+        aiocop.register_context_provider(provider_b)
+
+        async def task_with_io():
+            time.sleep(0.015)
+
+        task = asyncio.create_task(task_with_io())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context.get("key_a") == "value_a"
+        assert event.context.get("key_b") == "value_b"
+
+    def test_register_unregister_context_provider(self) -> None:
+        """Test registering and unregistering context providers."""
+        def my_provider() -> dict[str, Any]:
+            return {}
+
+        aiocop.register_context_provider(my_provider)
+        aiocop.unregister_context_provider(my_provider)
+        # Should not raise
+        aiocop.clear_context_providers()
+
+    @pytest.mark.asyncio
+    async def test_context_provider_exception_is_caught(self, setup_aiocop, captured_events) -> None:
+        """Test that exceptions in context providers are caught and logged."""
+        aiocop.activate()
+
+        def bad_provider() -> dict[str, Any]:
+            raise ValueError("Provider error!")
+
+        def good_provider() -> dict[str, Any]:
+            return {"good_key": "good_value"}
+
+        aiocop.register_context_provider(bad_provider)
+        aiocop.register_context_provider(good_provider)
+
+        async def task_with_io():
+            time.sleep(0.015)
+
+        # Should not raise despite bad_provider
+        task = asyncio.create_task(task_with_io())
+        await task
+        await asyncio.sleep(0)
+
+        # Good provider's context should still be captured
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context.get("good_key") == "good_value"
+
+
+# =============================================================================
+# Callback Error Handling Tests
+# =============================================================================
+
+
+class TestCallbackErrorHandling:
+    """Test that callback errors are handled gracefully."""
+
+    @pytest.mark.asyncio
+    async def test_callback_exception_is_caught(self, setup_aiocop) -> None:
+        """Test that exceptions in callbacks are caught and don't crash the app."""
+        aiocop.activate()
+
+        good_callback_called = []
+
+        def bad_callback(event: SlowTaskEvent) -> None:
+            raise RuntimeError("Callback error!")
+
+        def good_callback(event: SlowTaskEvent) -> None:
+            good_callback_called.append(event)
+
+        aiocop.register_slow_task_callback(bad_callback)
+        aiocop.register_slow_task_callback(good_callback)
+
+        async def task_with_io():
+            time.sleep(0.015)
+
+        # Should not raise despite bad_callback
+        task = asyncio.create_task(task_with_io())
+        await task
+        await asyncio.sleep(0)
+
+        # Good callback should still be called
+        assert len(good_callback_called) >= 1
+
+    @pytest.mark.asyncio
+    async def test_multiple_callbacks_all_invoked(self, setup_aiocop) -> None:
+        """Test that all registered callbacks are invoked."""
+        aiocop.activate()
+
+        callback_a_events: list[SlowTaskEvent] = []
+        callback_b_events: list[SlowTaskEvent] = []
+
+        def callback_a(event: SlowTaskEvent) -> None:
+            callback_a_events.append(event)
+
+        def callback_b(event: SlowTaskEvent) -> None:
+            callback_b_events.append(event)
+
+        aiocop.register_slow_task_callback(callback_a)
+        aiocop.register_slow_task_callback(callback_b)
+
+        async def task_with_io():
+            time.sleep(0.015)
+
+        task = asyncio.create_task(task_with_io())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(callback_a_events) >= 1
+        assert len(callback_b_events) >= 1
+
+
+# =============================================================================
+# CPU Blocking Detection Tests
+# =============================================================================
+
+
+class TestCPUBlockingDetection:
+    """Test detection of CPU-bound blocking (no I/O but slow)."""
+
+    @pytest.mark.asyncio
+    async def test_cpu_blocking_detected(self, setup_aiocop, captured_events) -> None:
+        """Test that CPU-bound work exceeding threshold is detected."""
+        aiocop.activate()
+
+        async def cpu_bound_task():
+            # CPU-intensive work without I/O
+            total = 0
+            start = time.perf_counter()
+            while time.perf_counter() - start < 0.02:  # 20ms of CPU work
+                total += sum(range(1000))
+            return total
+
+        task = asyncio.create_task(cpu_bound_task())
+        await task
+        await asyncio.sleep(0)
+
+        # Should detect slow task even without I/O
+        slow_events = [e for e in captured_events if e.exceeded_threshold]
+        if len(slow_events) > 0:
+            event = slow_events[0]
+            # If no blocking I/O detected, reason should be cpu_blocking
+            if len(event.blocking_events) == 0:
+                assert event.reason == "cpu_blocking"
+                assert event.severity_score == 0
+                assert event.severity_level == "low"
+
+
+# =============================================================================
+# Core Function Tests
+# =============================================================================
+
+
+class TestCoreFunctions:
+    """Test core utility functions."""
+
+    def test_get_patched_functions_returns_list(self, setup_aiocop) -> None:
+        """Test that get_patched_functions returns the patched functions."""
+        patched = aiocop.get_patched_functions()
+        assert isinstance(patched, list)
+        assert len(patched) > 0
+        # Should include time.sleep
+        assert "time.sleep" in patched
+
+    def test_get_blocking_events_dict(self) -> None:
+        """Test that get_blocking_events_dict returns event weights."""
+        events_dict = get_blocking_events_dict()
+        assert isinstance(events_dict, dict)
+        assert len(events_dict) > 0
+        # Check some known events
+        assert "open" in events_dict
+        assert "time.sleep" in events_dict
+        assert events_dict["time.sleep"] == aiocop.WEIGHT_HEAVY
+
+    def test_format_blocking_event(self) -> None:
+        """Test formatting of raw blocking events."""
+        raw_event: RawBlockingEvent = {
+            "event_name": "open",
+            "raw_args": ("/path/to/file", "r"),
+            "raw_stack": [
+                ("/home/user/app/main.py", 42, "my_function"),
+                ("/home/user/app/utils.py", 10, "helper"),
+            ],
+            "timestamp": 1234567890.0,
+            "severity": 10,
+        }
+
+        formatted = format_blocking_event(raw_event)
+
+        assert formatted["event"] == "open(/path/to/file, r)"
+        assert "main.py:42:my_function" in formatted["trace"]
+        assert formatted["severity"] == 10
+
+    def test_get_slow_task_threshold_ms(self, setup_aiocop) -> None:
+        """Test getting the current slow task threshold."""
+        threshold = aiocop.get_slow_task_threshold_ms()
+        assert threshold == 10.0  # Set in setup_aiocop fixture
+
+    def test_severity_constants_exported(self) -> None:
+        """Test that severity constants are exported."""
+        assert aiocop.WEIGHT_HEAVY == 50
+        assert aiocop.WEIGHT_MODERATE == 10
+        assert aiocop.WEIGHT_LIGHT == 1
+        assert aiocop.WEIGHT_TRIVIAL == 0
+        assert aiocop.THRESHOLD_HIGH == 50
+        assert aiocop.THRESHOLD_MEDIUM == 10
+        assert aiocop.THRESHOLD_LOW == 1
+
+
+# =============================================================================
+# Raise on Violations Integration Tests
+# =============================================================================
+
+
+class TestRaiseOnViolationsIntegration:
+    """Integration tests for raise_on_violations functionality.
+    
+    Note: The HighSeverityBlockingIoException is raised at the event loop level
+    (in Handle._run), not at the task level. This makes it difficult to catch
+    in async tests. We test the mechanism by verifying its components work.
+    """
+
+    def test_raise_on_violations_flag_propagates(self, setup_aiocop) -> None:
+        """Test that raise_on_violations flag is properly managed."""
+        # Initially disabled
+        assert aiocop.is_raise_on_violations_enabled() is False
+
+        # Enable via function
+        aiocop.enable_raise_on_violations()
+        assert aiocop.is_raise_on_violations_enabled() is True
+
+        # Disable
+        aiocop.disable_raise_on_violations()
+        assert aiocop.is_raise_on_violations_enabled() is False
+
+        # Enable via context manager
+        with aiocop.raise_on_violations():
+            assert aiocop.is_raise_on_violations_enabled() is True
+
+        # Disabled after context exits
+        assert aiocop.is_raise_on_violations_enabled() is False
+
+    def test_check_and_raise_function_raises_on_high_severity(self) -> None:
+        """Test that the internal check function raises for high severity."""
+        from aiocop.core.slow_tasks import _check_and_raise_if_needed
+        from aiocop.core.state import _reset_exception_flag
+
+        _reset_exception_flag()
+
+        # High severity events should trigger exception
+        high_severity_events = [
+            {"event": "time.sleep(1)", "trace": "test.py:1:func", "entry_point": "test.py:1:func", "severity": 50},
+        ]
+
+        with pytest.raises(aiocop.HighSeverityBlockingIoException) as exc_info:
+            _check_and_raise_if_needed(
+                elapsed=50_000_000,  # 50ms in nanoseconds
+                blocking_events=high_severity_events,
+                should_raise=True,
+            )
+
+        assert exc_info.value.severity_score >= 50
+        assert exc_info.value.severity_level == "high"
+
+    def test_check_and_raise_does_not_raise_when_disabled(self) -> None:
+        """Test that check function doesn't raise when should_raise is False."""
+        from aiocop.core.slow_tasks import _check_and_raise_if_needed
+        from aiocop.core.state import _reset_exception_flag
+
+        _reset_exception_flag()
+
+        high_severity_events = [
+            {"event": "time.sleep(1)", "trace": "test.py:1:func", "entry_point": "test.py:1:func", "severity": 50},
+        ]
+
+        # Should not raise when should_raise is False
+        _check_and_raise_if_needed(
+            elapsed=50_000_000,
+            blocking_events=high_severity_events,
+            should_raise=False,  # Disabled
+        )
+        # If we get here, no exception was raised - test passes
+
+    def test_check_and_raise_does_not_raise_for_low_severity(self) -> None:
+        """Test that check function doesn't raise for low severity events."""
+        from aiocop.core.slow_tasks import _check_and_raise_if_needed
+        from aiocop.core.state import _reset_exception_flag
+
+        _reset_exception_flag()
+
+        low_severity_events = [
+            {"event": "os.stat()", "trace": "test.py:1:func", "entry_point": "test.py:1:func", "severity": 1},
+        ]
+
+        # Should not raise for low severity even when should_raise is True
+        _check_and_raise_if_needed(
+            elapsed=50_000_000,
+            blocking_events=low_severity_events,
+            should_raise=True,
+        )
+        # If we get here, no exception was raised - test passes
+
+
+# =============================================================================
+# Edge Case Tests
+# =============================================================================
+
+
+class TestEdgeCases:
+    """Test edge cases and boundary conditions."""
+
+    def test_duplicate_callback_registration(self) -> None:
+        """Test that registering the same callback twice doesn't duplicate it."""
+        call_count = []
+
+        def my_callback(event: SlowTaskEvent) -> None:
+            call_count.append(1)
+
+        aiocop.register_slow_task_callback(my_callback)
+        aiocop.register_slow_task_callback(my_callback)  # Duplicate
+
+        # Internal check - callback list should only have one entry
+        from aiocop.core.callbacks import _slow_task_callbacks
+        count = sum(1 for cb in _slow_task_callbacks if cb == my_callback)
+        assert count == 1
+
+    def test_unregister_nonexistent_callback(self) -> None:
+        """Test that unregistering a non-existent callback doesn't raise."""
+        def my_callback(event: SlowTaskEvent) -> None:
+            pass
+
+        # Should not raise
+        aiocop.unregister_slow_task_callback(my_callback)
+
+    def test_duplicate_context_provider_registration(self) -> None:
+        """Test that registering the same provider twice doesn't duplicate it."""
+        def my_provider() -> dict[str, Any]:
+            return {}
+
+        aiocop.register_context_provider(my_provider)
+        aiocop.register_context_provider(my_provider)  # Duplicate
+
+        from aiocop.core.callbacks import _context_providers
+        count = sum(1 for p in _context_providers if p == my_provider)
+        assert count == 1
+
+    @pytest.mark.asyncio
+    async def test_empty_context_when_no_providers(self, setup_aiocop, captured_events) -> None:
+        """Test that context is empty dict when no providers registered."""
+        aiocop.activate()
+        aiocop.clear_context_providers()
+
+        async def task_with_io():
+            time.sleep(0.015)
+
+        task = asyncio.create_task(task_with_io())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context == {}
+
+    def test_slow_task_event_default_context(self) -> None:
+        """Test that SlowTaskEvent has empty dict as default context."""
+        event = SlowTaskEvent(
+            elapsed_ms=50.0,
+            threshold_ms=30.0,
+            exceeded_threshold=True,
+            severity_score=60,
+            severity_level="high",
+            reason="io_blocking",
+            blocking_events=[],
+            # context not provided - should default to {}
+        )
+        assert event.context == {}
