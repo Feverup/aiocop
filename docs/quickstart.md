@@ -38,6 +38,8 @@ To actually see the detected events, register a callback:
 import aiocop
 
 def on_slow_task(event: aiocop.SlowTaskEvent) -> None:
+    # Callback is invoked for ALL blocking I/O, not just slow tasks.
+    # Use exceeded_threshold to check if it was actually slow.
     if event.exceeded_threshold:
         print(f"SLOW TASK: {event.elapsed_ms:.1f}ms (threshold: {event.threshold_ms}ms)")
         print(f"   Severity: {event.severity_level} (score: {event.severity_score})")
@@ -53,6 +55,8 @@ aiocop.start_blocking_io_detection()
 aiocop.detect_slow_tasks(threshold_ms=30, on_slow_task=on_slow_task)
 aiocop.activate()
 ```
+
+**Note:** The callback is invoked for **all tasks with blocking I/O detected**, even fast ones. Check `event.exceeded_threshold` to filter for slow tasks only.
 
 ## Complete Example
 

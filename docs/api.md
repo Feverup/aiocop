@@ -322,7 +322,13 @@ class SlowTaskEvent:
     context: dict[str, Any] = field(default_factory=dict)
 ```
 
-Event emitted when blocking I/O or slow tasks are detected.
+Event emitted when blocking I/O is detected or when a task exceeds the threshold.
+
+**When events are emitted:**
+- `reason="io_blocking"`: Blocking I/O was detected. `exceeded_threshold` indicates if the task was slow.
+- `reason="cpu_blocking"`: No blocking I/O, but task exceeded threshold (CPU-bound work).
+
+**Note:** Callbacks receive events for **all blocking I/O**, not just slow tasks. Use `exceeded_threshold` to filter.
 
 ---
 

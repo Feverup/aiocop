@@ -319,7 +319,9 @@ except aiocop.HighSeverityBlockingIoException as e:
 
 ### SlowTaskEvent
 
-The main event passed to callbacks:
+The main event passed to callbacks.
+
+**Important:** Callbacks are invoked for **all tasks where blocking I/O is detected**, regardless of whether the threshold was exceeded. The `exceeded_threshold` field tells you if the task was actually slow.
 
 ```python
 @dataclass(frozen=True)
@@ -334,10 +336,28 @@ class SlowTaskEvent:
     context: dict[str, Any]  # Context from providers (default: {})
 ```
 
-**Fields:**
+### When Callbacks Are Invoked
 
-- `reason="io_blocking"`: Blocking I/O was detected
-- `reason="cpu_blocking"`: Task exceeded threshold but no I/O detected (CPU-bound)
+| Condition | `reason` | `exceeded_threshold` |
+|-----------|----------|---------------------|
+| Blocking I/O detected, task was fast | `"io_blocking"` | `False` |
+| Blocking I/O detected, task was slow | `"io_blocking"` | `True` |
+| No blocking I/O, but task was slow | `"cpu_blocking"` | `True` |
+
+This means you can:
+- **Log all blocking I/O** (even fast ones) for analysis
+- **Alert only on slow tasks** by checking `exceeded_threshold`
+
+```python
+def on_slow_task(event: aiocop.SlowTaskEvent) -> None:
+    # Log all blocking I/O for debugging/analysis
+    if event.reason == "io_blocking":
+        log_blocking_io(event)
+    
+    # Only alert if the task was actually slow
+    if event.exceeded_threshold:
+        send_alert(event)
+```
 
 ### BlockingEventInfo
 
