@@ -14,6 +14,21 @@
     <a href="https://feverup.github.io/aiocop/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg" alt="Documentation"></a>
 </p>
 
+## Performance
+
+aiocop adds approximately **13 microseconds** of overhead per async task:
+
+| Scenario | Overhead | Impact on 50ms Request |
+|----------|----------|------------------------|
+| Pure async (no blocking I/O) | ~1 us | 0.002% |
+| Light blocking (os.stat) | ~14 us | 0.03% |
+| Moderate blocking (file read) | ~12 us | 0.02% |
+| Realistic HTTP handler | ~22 us | 0.04% |
+
+For typical web applications, this means **less than 0.05% overhead**.
+
+Run the benchmark yourself: `python benchmarks/run_benchmark.py`
+
 ## Features
 
 * **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use

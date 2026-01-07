@@ -40,6 +40,7 @@ aiocop.activate()
 - [User Guide](guide.md) - Complete guide to all features
 - [API Reference](api.md) - Full API documentation
 - [Integrations](integrations.md) - FastAPI, Datadog, and more
+- [Benchmarks](benchmarks.md) - Performance and overhead analysis
 
 ## Features
 

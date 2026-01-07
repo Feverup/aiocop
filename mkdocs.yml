@@ -40,6 +40,7 @@ nav:
   - User Guide: guide.md
   - API Reference: api.md
   - Integrations: integrations.md
+  - Benchmarks: benchmarks.md
 
 markdown_extensions:
   - pymdownx.highlight:
