@@ -1,0 +1,60 @@
+site_name: aiocop
+site_url: https://feverup.github.io/aiocop
+site_description: Non-intrusive monitoring for Python asyncio. Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop.
+site_author: Fever Labs, Inc.
+
+repo_name: feverup/aiocop
+repo_url: https://github.com/feverup/aiocop
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quick Start: quickstart.md
+  - User Guide: guide.md
+  - API Reference: api.md
+  - Integrations: integrations.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - pymdownx.details
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/feverup/aiocop
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/aiocop/

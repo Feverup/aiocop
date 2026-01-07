@@ -11,6 +11,7 @@
     <a href="https://pypi.org/project/aiocop/"><img src="https://img.shields.io/pypi/v/aiocop.svg" alt="PyPI version"></a>
     <a href="https://pypi.org/project/aiocop/"><img src="https://img.shields.io/pypi/pyversions/aiocop.svg" alt="Python versions"></a>
     <a href="https://github.com/feverup/aiocop/blob/master/LICENSE"><img src="https://img.shields.io/pypi/l/aiocop.svg" alt="License"></a>
+    <a href="https://feverup.github.io/aiocop/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg" alt="Documentation"></a>
 </p>
 
 ## Features

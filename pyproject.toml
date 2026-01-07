@@ -46,6 +46,9 @@ test = [
     "ty", # checking types
     "ipdb", # debugging
 ]
+docs = [
+    "mkdocs-material",  # documentation
+]
 
 [project.urls]
 bugs = "https://github.com/Feverup/aiocop/issues"
