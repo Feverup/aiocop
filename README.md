@@ -7,6 +7,12 @@
     Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop.
 </p>
 
+<p align="center">
+    <a href="https://pypi.org/project/aiocop/"><img src="https://img.shields.io/pypi/v/aiocop.svg" alt="PyPI version"></a>
+    <a href="https://pypi.org/project/aiocop/"><img src="https://img.shields.io/pypi/pyversions/aiocop.svg" alt="Python versions"></a>
+    <a href="https://github.com/feverup/aiocop/blob/master/LICENSE"><img src="https://img.shields.io/pypi/l/aiocop.svg" alt="License"></a>
+</p>
+
 ## Features
 
 * **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use
@@ -59,6 +65,8 @@ aiocop.activate()
 
 ```python
 # In your ASGI application setup (e.g., main.py or asgi.py)
+from contextlib import asynccontextmanager
+
 import aiocop
 
 def setup_monitoring() -> None:
