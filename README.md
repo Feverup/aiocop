@@ -28,13 +28,13 @@
 
 aiocop was built to solve specific production constraints that existing approaches didn't quite fit.
 
-**vs. Monkey-Patching** (e.g., blockbuster): Many excellent tools rely on monkey-patching standard library functions to detect blocking calls. While effective, this approach can sometimes conflict with other libraries that instrument code (like APMs) and adds Python-level overhead to every call. aiocop uses `sys.audit` (native C-level hooks) to avoid these conflicts and keep overhead minimal.
+**vs. Heavy Monkey-Patching** (e.g., blockbuster): Many excellent tools rely on extensive monkey-patching of standard library logic to detect blocking calls. While effective, this approach can sometimes conflict with other libraries that instrument code (like APMs). aiocop prioritizes native `sys.audit` hooks, using minimal wrappers only where necessary to emit audit events. This significantly reduces the risk of conflicts with other instrumentation tools.
 
 **vs. asyncio Debug Mode**: Python's built-in debug mode is invaluable during development. However, it can be heavy on logs and performance, making it impractical to leave on in high-traffic production environments. aiocop is designed to be "always-on" safe.
 
-| Feature | Monkey-Patching Tools | asyncio Debug Mode | aiocop |
+| Feature | Heavy Monkey-Patching Tools | asyncio Debug Mode | aiocop |
 |---------|----------------------|-------------------|--------|
-| Detection Method | Wrappers / Proxies | Event Loop Instrumentation | `sys.audit` Hooks |
+| Detection Method | Extensive Wrappers | Event Loop Instrumentation | `sys.audit` Hooks + Minimal Wrappers |
 | Interference Risk | Medium (can conflict with APMs) | None | None |
 | Production Overhead | Low-Medium | High | Very Low (~13μs/task) |
 | Stack Traces | Yes | No (timing only) | Yes |

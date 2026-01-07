@@ -151,9 +151,9 @@ The benchmark script:
 
 ## Comparison with Alternatives
 
-aiocop uses Python's `sys.audit` hooks, which is more efficient than alternatives like:
+aiocop prioritizes Python's `sys.audit` hooks (using minimal wrappers only where necessary), which is more efficient than alternatives like:
 
-- **Monkey-patching every function**: Higher overhead, more intrusive
+- **Heavy monkey-patching of every function**: Higher overhead, more intrusive
 - **Periodic sampling**: Misses events, less accurate
 - **External profilers**: Much higher overhead, not production-safe
 
