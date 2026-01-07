@@ -9,7 +9,7 @@ from types import FrameType
 from aiocop.core.audit_patcher import FUNCTIONS_TO_PATCH_DICT
 from aiocop.core.state import _get_thread_local, raise_on_violations
 from aiocop.types.events import BlockingEventInfo, RawBlockingEvent
-from aiocop.types.severity import WEIGHT_HEAVY, WEIGHT_MODERATE, WEIGHT_LIGHT
+from aiocop.types.severity import WEIGHT_HEAVY, WEIGHT_LIGHT, WEIGHT_MODERATE
 
 logger = logging.getLogger(__name__)
 

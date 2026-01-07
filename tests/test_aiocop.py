@@ -5,14 +5,12 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 
 import aiocop
 from aiocop.core.blocking_io import format_blocking_event, get_blocking_events_dict
 from aiocop.types.events import RawBlockingEvent, SlowTaskEvent
-
 
 # =============================================================================
 # Fixtures for integration tests
@@ -256,7 +254,7 @@ class TestHighSeverityBlockingIoException:
 
 class TestBlockingIODetection:
     """Integration tests for actual blocking I/O detection in async code.
-    
+
     Note: Blocking I/O must run in a SEPARATE task (via create_task) because
     callbacks are invoked after Handle._run completes. If we run blocking I/O
     inline (via await), the callback won't be invoked until the test itself completes.
@@ -621,7 +619,7 @@ class TestCoreFunctions:
 
 class TestRaiseOnViolationsIntegration:
     """Integration tests for raise_on_violations functionality.
-    
+
     Note: The HighSeverityBlockingIoException is raised at the event loop level
     (in Handle._run), not at the task level. This makes it difficult to catch
     in async tests. We test the mechanism by verifying its components work.

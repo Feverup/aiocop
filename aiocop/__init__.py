@@ -91,44 +91,47 @@ _metadata = metadata("aiocop")
 __version__ = _metadata["Version"]
 __author__ = _metadata["Author-email"]
 
-from aiocop.core.audit_patcher import patch_audit_functions, get_patched_functions
+# ruff: noqa: E402 - imports must be after metadata loading
+from aiocop.core.audit_patcher import get_patched_functions, patch_audit_functions
 from aiocop.core.blocking_io import (
-    start_blocking_io_detection,
-    reset_blocking_events,
     format_blocking_event,
     get_blocking_events_dict,
+    reset_blocking_events,
+    start_blocking_io_detection,
 )
 from aiocop.core.callbacks import (
-    register_slow_task_callback,
-    unregister_slow_task_callback,
+    ContextProvider,
+    clear_context_providers,
     clear_slow_task_callbacks,
     register_context_provider,
+    register_slow_task_callback,
     unregister_context_provider,
-    clear_context_providers,
-    ContextProvider,
+    unregister_slow_task_callback,
 )
 from aiocop.core.severity import calculate_io_severity_score, get_severity_level_from_score
-from aiocop.core.slow_tasks import detect_slow_tasks, get_slow_task_threshold_ms, SlowTaskCallback
+from aiocop.core.slow_tasks import SlowTaskCallback, detect_slow_tasks, get_slow_task_threshold_ms
 from aiocop.core.state import (
     activate,
     deactivate,
-    is_monitoring_active,
-    enable_raise_on_violations,
     disable_raise_on_violations,
+    enable_raise_on_violations,
+    is_monitoring_active,
     is_raise_on_violations_enabled,
+)
+from aiocop.core.state import (
     raise_on_violations_context as raise_on_violations,
 )
 from aiocop.exceptions import HighSeverityBlockingIoException
 from aiocop.types.events import BlockingEventInfo, RawBlockingEvent, SlowTaskEvent
 from aiocop.types.severity import (
-    IoSeverityLevel,
-    WEIGHT_HEAVY,
-    WEIGHT_MODERATE,
-    WEIGHT_LIGHT,
-    WEIGHT_TRIVIAL,
     THRESHOLD_HIGH,
-    THRESHOLD_MEDIUM,
     THRESHOLD_LOW,
+    THRESHOLD_MEDIUM,
+    WEIGHT_HEAVY,
+    WEIGHT_LIGHT,
+    WEIGHT_MODERATE,
+    WEIGHT_TRIVIAL,
+    IoSeverityLevel,
 )
 
 __all__ = [

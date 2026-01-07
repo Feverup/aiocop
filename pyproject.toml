@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aiocop"
-version = "0.1.4"
+version = "1.0.0"
 description = "Non-intrusive monitoring for Python asyncio. Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop."
 readme = "README.md"
 authors = [
@@ -16,7 +16,7 @@ maintainers = [
     {name = "Adrià Ardila", email = "adria.ardila@feverup.com"}
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Debuggers",
     "Topic :: Software Development :: Quality Assurance",

@@ -6,7 +6,7 @@ import sys
 from functools import wraps
 from typing import Any
 
-from aiocop.types.severity import WEIGHT_HEAVY, WEIGHT_TRIVIAL, WEIGHT_LIGHT, WEIGHT_MODERATE
+from aiocop.types.severity import WEIGHT_HEAVY, WEIGHT_LIGHT, WEIGHT_MODERATE, WEIGHT_TRIVIAL
 
 logger = logging.getLogger(__name__)
 

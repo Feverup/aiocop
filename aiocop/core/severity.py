@@ -2,10 +2,10 @@
 
 from aiocop.types.events import BlockingEventInfo
 from aiocop.types.severity import (
-    IoSeverityLevel,
-    WEIGHT_MODERATE,
     THRESHOLD_HIGH,
     THRESHOLD_MEDIUM,
+    WEIGHT_MODERATE,
+    IoSeverityLevel,
 )
 
 

@@ -1,5 +1,9 @@
 # History
 
+## 1.0.0 (2026-01-07)
+
+* First stable release
+
 ## 0.1.3 (2026-01-05)
 
 * Add classifiers

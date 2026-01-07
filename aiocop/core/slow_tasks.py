@@ -5,13 +5,14 @@
 
 import logging
 from asyncio.events import Handle
+from collections.abc import Callable
+from dataclasses import replace
 from time import perf_counter_ns
-from typing import Any, Callable
+from typing import Any
 
 from aiocop.core.blocking_io import format_blocking_event
 from aiocop.core.callbacks import _capture_context, _invoke_slow_task_callbacks
 from aiocop.core.severity import calculate_io_severity_score, get_severity_level_from_score
-from dataclasses import replace
 from aiocop.core.state import (
     _get_thread_local,
     _has_exception_been_raised,

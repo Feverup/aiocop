@@ -1,6 +1,7 @@
 """Callback registry for aiocop events."""
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from aiocop.types.events import SlowTaskEvent
 

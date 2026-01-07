@@ -17,9 +17,9 @@ import os
 import statistics
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 # Add parent directory to path for importing aiocop
 sys.path.insert(0, str(Path(__file__).parent.parent))
