@@ -128,7 +128,7 @@ if aiocop.is_monitoring_active():
 
 ### Raise Exceptions on High Severity Blocking I/O
 
-Useful during development to catch blocking calls immediately:
+Useful during development and testing to catch blocking calls immediately:
 
 ```python
 # Enable globally for current context
@@ -141,6 +141,37 @@ aiocop.disable_raise_on_violations()
 with aiocop.raise_on_violations():
     await some_operation()  # Will raise HighSeverityBlockingIoException if blocking
 ```
+
+### CI/CD Integration - Fail Tests on Blocking I/O
+
+Use aiocop in your integration tests to **prevent blocking code from being merged**:
+
+```python
+# conftest.py
+import pytest
+import aiocop
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_aiocop():
+    aiocop.patch_audit_functions()
+    aiocop.start_blocking_io_detection()
+    aiocop.detect_slow_tasks(threshold_ms=50)
+    aiocop.activate()
+
+# test_views.py
+@pytest.mark.asyncio
+async def test_my_async_endpoint(client):
+    # Setup code can have blocking I/O (fixtures, test data, etc.)
+    
+    # Only the view execution is wrapped - this is what we care about
+    with aiocop.raise_on_violations():
+        response = await client.get("/api/endpoint")
+    
+    # Assertions can have blocking I/O too (DB checks, etc.)
+    assert response.status_code == 200
+```
+
+We wrap only the async view (not the entire test) because test setup/teardown often has legitimate blocking code. See [Integrations](https://feverup.github.io/aiocop/integrations/) for complete examples.
 
 ## Context Providers
 

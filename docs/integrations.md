@@ -476,6 +476,172 @@ aiocop.register_slow_task_callback(structured_log_callback)
 aiocop.register_slow_task_callback(datadog_callback)
 ```
 
+## CI/CD Integration - Fail Tests on Blocking I/O
+
+Use aiocop to **prevent blocking code from being merged** by raising exceptions in your integration tests.
+
+### pytest Integration
+
+```python
+# conftest.py
+import importlib
+import pytest
+import aiocop
+
+# Libraries that do lazy-loading (would cause false positives)
+LAZY_LOAD_LIBS = ["anyio", "httpx", "httpcore"]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def preload_lazy_libraries():
+    """
+    Pre-import libraries that do lazy loading to avoid false positives.
+    Import-time blocking is expected; runtime blocking is not.
+    """
+    for lib in LAZY_LOAD_LIBS:
+        try:
+            importlib.import_module(lib)
+        except ImportError:
+            pass
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_aiocop():
+    """Set up aiocop for the test session."""
+    aiocop.patch_audit_functions()
+    aiocop.start_blocking_io_detection()
+    aiocop.detect_slow_tasks(threshold_ms=50)
+    aiocop.activate()
+    
+    # Don't raise by default - enable per-test or per-view
+    aiocop.disable_raise_on_violations()
+```
+
+### Context Manager for Async Views
+
+Wrap async view execution to catch blocking I/O:
+
+```python
+# io_blocking_context.py
+import aiocop
+
+
+class BlockingIODetector:
+    """
+    Context manager that raises HighSeverityBlockingIoException
+    when blocking I/O is detected in async code.
+    
+    Use in integration tests to catch blocking code before it's merged.
+    """
+
+    def __init__(self):
+        self._context_manager = None
+
+    def __enter__(self):
+        aiocop.reset_blocking_events()
+        self._context_manager = aiocop.raise_on_violations()
+        self._context_manager.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._context_manager is not None:
+            self._context_manager.__exit__(exc_type, exc_val, exc_tb)
+```
+
+### Why Wrap Only the View (Not the Entire Test)?
+
+Tests often contain blocking code that's perfectly fine:
+
+```python
+@pytest.mark.asyncio
+async def test_my_endpoint(client, db):
+    # Test setup - blocking is OK here
+    user = User.objects.create(name="test")  # Sync DB call (fine)
+    with open("fixtures/data.json") as f:    # File I/O (fine)
+        data = json.load(f)
+    
+    # The view execution - blocking is NOT OK here
+    with BlockingIODetector():
+        response = await client.post("/api/users", json=data)
+    
+    # Assertions - blocking is OK here
+    assert response.status_code == 201
+    assert User.objects.count() == 2         # Sync DB call (fine)
+```
+
+**We only care about blocking inside the async view itself**, not in test setup/teardown. Enabling `raise_on_violations` for the entire test would cause false positives from:
+
+- Database fixtures and factory setup
+- File-based test data loading
+- Synchronous assertions and verifications
+- Test cleanup operations
+
+By wrapping only the view execution, you get precise detection of production-relevant blocking code.
+
+### Using in Tests
+
+```python
+# test_views.py
+import pytest
+from io_blocking_context import BlockingIODetector
+
+
+@pytest.mark.asyncio
+async def test_my_async_endpoint(client):
+    """This test will FAIL if the endpoint has blocking I/O."""
+    with BlockingIODetector():
+        response = await client.get("/api/my-endpoint")
+    
+    assert response.status_code == 200
+```
+
+### Framework Integration (Django Ninja Example)
+
+Automatically wrap all async views in your test environment:
+
+```python
+# In your framework wrapper
+from functools import wraps
+
+TESTING = False  # Set to True in conftest.py
+
+
+def wrap_async_view(view_func):
+    @wraps(view_func)
+    async def wrapper(*args, **kwargs):
+        if TESTING:
+            with BlockingIODetector():
+                return await view_func(*args, **kwargs)
+        return await view_func(*args, **kwargs)
+    return wrapper
+```
+
+### Benefits
+
+1. **Catch blocking code in CI** before it reaches production
+2. **Self-documenting tests** - failures clearly indicate blocking I/O
+3. **Gradual adoption** - enable per-test or per-view
+4. **No production overhead** - only active during testing
+
+### Handling False Positives
+
+Some blocking is expected (e.g., lazy imports). Handle with:
+
+```python
+# Pre-import lazy libraries in conftest.py
+LAZY_LOAD_LIBS = ["anyio", "httpx", "httpcore", "your_lazy_lib"]
+
+@pytest.fixture(scope="session", autouse=True)
+def preload_lazy_libraries():
+    for lib in LAZY_LOAD_LIBS:
+        try:
+            importlib.import_module(lib)
+        except ImportError:
+            pass
+```
+
+---
+
 ## Gradual Rollout
 
 Roll out aiocop monitoring gradually:
