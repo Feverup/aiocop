@@ -13,6 +13,7 @@ Report bugs at https://github.com/Feverup/aiocop/issues.
 If you are reporting a bug, please include:
 
 - Your operating system name and version.
+- Your Python version.
 - Any details about your local setup that might be helpful in troubleshooting.
 - Detailed steps to reproduce the bug.
 
@@ -43,21 +44,27 @@ If you are proposing a feature:
 Ready to contribute? Here's how to set up `aiocop` for local development.
 
 1. Fork the `aiocop` repo on GitHub.
+
 2. Clone your fork locally:
 
    ```sh
    git clone git@github.com:your_name_here/aiocop.git
+   cd aiocop
    ```
 
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development:
+3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you haven't already:
 
    ```sh
-   mkvirtualenv aiocop
-   cd aiocop/
-   python setup.py develop
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-4. Create a branch for local development:
+4. Install the project with development dependencies:
+
+   ```sh
+   uv sync --extra test
+   ```
+
+5. Create a branch for local development:
 
    ```sh
    git checkout -b name-of-your-bugfix-or-feature
@@ -65,18 +72,17 @@ Ready to contribute? Here's how to set up `aiocop` for local development.
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox:
+6. When you're done making changes, check that your changes pass linting and tests:
 
    ```sh
-   make lint
-   make test
-   # Or
-   make test-all
+   # Run linter
+   uv run ruff check
+
+   # Run tests
+   uv run pytest
    ```
 
-   To get flake8 and tox, just pip install them into your virtualenv.
-
-6. Commit your changes and push your branch to GitHub:
+7. Commit your changes and push your branch to GitHub:
 
    ```sh
    git add .
@@ -84,7 +90,7 @@ Ready to contribute? Here's how to set up `aiocop` for local development.
    git push origin name-of-your-bugfix-or-feature
    ```
 
-7. Submit a pull request through the GitHub website.
+8. Submit a pull request through the GitHub website.
 
 ## Pull Request Guidelines
 
@@ -92,27 +98,51 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
 2. If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring, and add the feature to the list in README.md.
-3. The pull request should work for Python 3.12 and 3.13. Tests run in GitHub Actions on every pull request to the main branch, make sure that the tests pass for all supported Python versions.
+3. The pull request should work for Python 3.10, 3.11, 3.12, and 3.13. Tests run in GitHub Actions on every pull request to the main branch, make sure that the tests pass for all supported Python versions.
 
 ## Tips
 
 To run a subset of tests:
 
 ```sh
-pytest tests.test_aiocop
+uv run pytest tests/test_aiocop.py -k "test_name"
+```
+
+To run tests with coverage:
+
+```sh
+uv run coverage run -m pytest
+uv run coverage report
 ```
 
 ## Deploying
 
-A reminder for the maintainers on how to deploy. Make sure all your changes are committed (including an entry in HISTORY.md). Then run:
+A reminder for the maintainers on how to deploy:
 
-```sh
-bump2version patch # possible: major / minor / patch
-git push
-git push --tags
-```
+1. Make sure all your changes are committed (including an entry in HISTORY.md).
 
-You can set up a [GitHub Actions workflow](https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-python#publishing-to-pypi) to automatically deploy your package to PyPI when you push a new tag.
+2. Update the version in `pyproject.toml`:
+
+   ```toml
+   version = "0.2.0"
+   ```
+
+3. Commit the version bump:
+
+   ```sh
+   git add pyproject.toml HISTORY.md
+   git commit -m "Bump version to 0.2.0"
+   git push
+   ```
+
+4. Create and push a tag:
+
+   ```sh
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+The GitHub Actions workflow will automatically build and publish the package to PyPI when a new tag is pushed.
 
 ## Code of Conduct
 
