@@ -14,20 +14,15 @@
     <a href="https://feverup.github.io/aiocop/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg" alt="Documentation"></a>
 </p>
 
-## Performance
+## Features
 
-aiocop adds approximately **13 microseconds** of overhead per async task:
-
-| Scenario | Overhead | Impact on 50ms Request |
-|----------|----------|------------------------|
-| Pure async (no blocking I/O) | ~1 us | 0.002% |
-| Light blocking (os.stat) | ~14 us | 0.03% |
-| Moderate blocking (file read) | ~12 us | 0.02% |
-| Realistic HTTP handler | ~22 us | 0.04% |
-
-For typical web applications, this means **less than 0.05% overhead**.
-
-Run the benchmark yourself: `python benchmarks/run_benchmark.py`
+* **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use
+* **Blocking I/O Detection**: Automatically detects blocking I/O calls (file operations, network calls, subprocess, etc.) in your async code
+* **Stack Trace Capture**: Captures full stack traces to pinpoint exactly where blocking calls originate
+* **Severity Scoring**: Assigns severity scores to blocking events to help prioritize fixes
+* **Callback-based Events**: Register callbacks to handle slow task events however you need (logging, metrics, alerts)
+* **Dynamic Controls**: Enable/disable monitoring at runtime, useful for gradual rollout or debugging sessions
+* **Exception Raising**: Optionally raise exceptions on high-severity blocking I/O for strict enforcement during development
 
 ## Why aiocop?
 
@@ -45,15 +40,20 @@ aiocop was built to solve specific production constraints that existing approach
 | Stack Traces | Yes | No (timing only) | Yes |
 | Runtime Control | Varies | Flag at startup | Dynamic on/off |
 
-## Features
+## Performance
 
-* **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use
-* **Blocking I/O Detection**: Automatically detects blocking I/O calls (file operations, network calls, subprocess, etc.) in your async code
-* **Stack Trace Capture**: Captures full stack traces to pinpoint exactly where blocking calls originate
-* **Severity Scoring**: Assigns severity scores to blocking events to help prioritize fixes
-* **Callback-based Events**: Register callbacks to handle slow task events however you need (logging, metrics, alerts)
-* **Dynamic Controls**: Enable/disable monitoring at runtime, useful for gradual rollout or debugging sessions
-* **Exception Raising**: Optionally raise exceptions on high-severity blocking I/O for strict enforcement during development
+aiocop adds approximately **13 microseconds** of overhead per async task:
+
+| Scenario | Overhead | Impact on 50ms Request |
+|----------|----------|------------------------|
+| Pure async (no blocking I/O) | ~1 us | 0.002% |
+| Light blocking (os.stat) | ~14 us | 0.03% |
+| Moderate blocking (file read) | ~12 us | 0.02% |
+| Realistic HTTP handler | ~22 us | 0.04% |
+
+For typical web applications, this means **less than 0.05% overhead**.
+
+Run the benchmark yourself: `python benchmarks/run_benchmark.py`
 
 ## Installation
 
