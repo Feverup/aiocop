@@ -29,6 +29,22 @@ For typical web applications, this means **less than 0.05% overhead**.
 
 Run the benchmark yourself: `python benchmarks/run_benchmark.py`
 
+## Why aiocop?
+
+aiocop was built to solve specific production constraints that existing approaches didn't quite fit.
+
+**vs. Monkey-Patching** (e.g., blockbuster): Many excellent tools rely on monkey-patching standard library functions to detect blocking calls. While effective, this approach can sometimes conflict with other libraries that instrument code (like APMs) and adds Python-level overhead to every call. aiocop uses `sys.audit` (native C-level hooks) to avoid these conflicts and keep overhead minimal.
+
+**vs. asyncio Debug Mode**: Python's built-in debug mode is invaluable during development. However, it can be heavy on logs and performance, making it impractical to leave on in high-traffic production environments. aiocop is designed to be "always-on" safe.
+
+| Feature | Monkey-Patching Tools | asyncio Debug Mode | aiocop |
+|---------|----------------------|-------------------|--------|
+| Detection Method | Wrappers / Proxies | Event Loop Instrumentation | `sys.audit` Hooks |
+| Interference Risk | Medium (can conflict with APMs) | None | None |
+| Production Overhead | Low-Medium | High | Very Low (~13μs/task) |
+| Stack Traces | Yes | No (timing only) | Yes |
+| Runtime Control | Varies | Flag at startup | Dynamic on/off |
+
 ## Features
 
 * **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use
