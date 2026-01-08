@@ -13,6 +13,7 @@ This guide covers all aiocop features in detail.
 - [Raise on Violations](#raise-on-violations)
 - [Event Types](#event-types)
 - [Monitored Operations](#monitored-operations)
+- [Extending aiocop (Advanced)](#extending-aiocop-advanced)
 
 ## How aiocop Works
 
@@ -400,3 +401,95 @@ events_dict = aiocop.get_blocking_events_dict()
 for event, weight in sorted(events_dict.items()):
     print(f"{event}: {weight}")
 ```
+
+## Extending aiocop (Advanced)
+
+For advanced users who need to monitor additional blocking operations, aiocop's internal dictionaries can be modified before setup.
+
+### Adding Custom Audit Events
+
+To listen for additional Python audit events (no patching required):
+
+```python
+from aiocop.core.blocking_io import BLOCKING_EVENTS_DICT
+from aiocop.types.severity import WEIGHT_MODERATE
+
+# Add before calling start_blocking_io_detection()
+BLOCKING_EVENTS_DICT["my.custom.audit.event"] = WEIGHT_MODERATE
+```
+
+This is safe for any audit event that Python's VM already emits. See [Python's audit events documentation](https://docs.python.org/3/library/audit_events.html) for the full list.
+
+### Adding Custom Functions to Patch
+
+To wrap additional Python functions with audit event emission:
+
+```python
+from aiocop.core.audit_patcher import FUNCTIONS_TO_PATCH_DICT
+from aiocop.types.severity import WEIGHT_HEAVY
+
+# Add before calling patch_audit_functions()
+FUNCTIONS_TO_PATCH_DICT["mylib.sync_http_call"] = WEIGHT_HEAVY
+FUNCTIONS_TO_PATCH_DICT["legacy_module.blocking_operation"] = WEIGHT_MODERATE
+```
+
+### Important Limitations
+
+**You can only patch pure Python functions.** C-level built-in functions cannot be monkey-patched and will silently fail or cause crashes.
+
+| Can Patch | Cannot Patch |
+|-----------|--------------|
+| `mylib.my_function` | `len`, `sum`, `sorted` |
+| `json.dumps` (Python wrapper) | `str.encode` (C method) |
+| `configparser.read` | `list.append` (C method) |
+| Third-party pure Python code | Most built-in types' methods |
+
+**How to tell if a function is patchable:**
+
+```python
+import inspect
+
+def is_patchable(func):
+    """Check if a function can be safely patched."""
+    try:
+        # Built-in functions implemented in C
+        if isinstance(func, type(len)):
+            return False
+        # Methods of built-in types
+        if isinstance(func, type(str.encode)):
+            return False
+        # Has Python source code
+        return inspect.isfunction(func) or inspect.ismethod(func)
+    except:
+        return False
+
+# Examples
+import json
+print(is_patchable(json.dumps))  # True - Python wrapper
+print(is_patchable(len))          # False - C built-in
+```
+
+### Example: Monitoring a Custom Library
+
+```python
+from aiocop.core.audit_patcher import FUNCTIONS_TO_PATCH_DICT
+from aiocop.core.blocking_io import BLOCKING_EVENTS_DICT
+from aiocop.types.severity import WEIGHT_HEAVY, WEIGHT_MODERATE
+import aiocop
+
+# 1. Add custom functions BEFORE setup
+FUNCTIONS_TO_PATCH_DICT["requests.get"] = WEIGHT_HEAVY
+FUNCTIONS_TO_PATCH_DICT["requests.post"] = WEIGHT_HEAVY
+FUNCTIONS_TO_PATCH_DICT["myapp.legacy.sync_db_query"] = WEIGHT_MODERATE
+
+# 2. These will also be added to BLOCKING_EVENTS_DICT automatically
+# when patch_audit_functions() is called
+
+# 3. Normal setup
+aiocop.patch_audit_functions()
+aiocop.start_blocking_io_detection()
+aiocop.detect_slow_tasks(threshold_ms=30)
+aiocop.activate()
+```
+
+**Note:** This is an advanced feature. The internal APIs may change between versions. If you find yourself needing to monitor many custom operations, please [open an issue](https://github.com/feverup/aiocop/issues) - we'd love to hear your use case!
