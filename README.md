@@ -24,6 +24,14 @@
 * **Dynamic Controls**: Enable/disable monitoring at runtime, useful for gradual rollout or debugging sessions
 * **Exception Raising**: Optionally raise exceptions on high-severity blocking I/O for strict enforcement during development
 
+## How It Works
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/feverup/aiocop/master/docs/images/explanation_diagram.png" alt="aiocop architecture diagram">
+</p>
+
+aiocop wraps `asyncio.Handle._run` (the method that executes every task in the event loop) and uses Python's `sys.audit` hooks to detect blocking calls. When your code calls a blocking function like `open()`, the audit event is captured along with the full stack trace—letting you know exactly where the problem is.
+
 ## Why aiocop?
 
 aiocop was built to solve specific production constraints that existing approaches didn't quite fit.
