@@ -71,34 +71,47 @@ pip install aiocop
 
 ## Quick Start
 
+Copy this into a file and run it - no dependencies needed besides aiocop:
+
 ```python
+# test_aiocop.py
+import asyncio
 import aiocop
 
-# Define a callback to handle slow task events
-def on_slow_task(event: aiocop.SlowTaskEvent) -> None:
-    if event.exceeded_threshold:
-        print(f"SLOW TASK DETECTED!")
-        print(f"  Elapsed: {event.elapsed_ms:.2f}ms (threshold: {event.threshold_ms}ms)")
-        print(f"  Severity: {event.severity_level} (score: {event.severity_score})")
-        print(f"  Reason: {event.reason}")
-        for evt in event.blocking_events:
-            print(f"    - {evt['event']}")
-            print(f"      at {evt['trace']}")
 
-# 1. Patch stdlib functions to emit audit events
-aiocop.patch_audit_functions()
+def on_slow_task(event):
+    print(f"SLOW TASK DETECTED: {event.elapsed_ms:.1f}ms")
+    print(f"  Severity: {event.severity_level}")
+    for evt in event.blocking_events:
+        print(f"  - {evt['event']} at {evt['entry_point']}")
 
-# 2. Register the audit hook to capture blocking IO
-aiocop.start_blocking_io_detection(trace_depth=20)
 
-# 3. Patch the event loop to detect slow tasks
-aiocop.detect_slow_tasks(
-    threshold_ms=30,
-    on_slow_task=on_slow_task,
-)
+async def blocking_task():
+    # This synchronous open() will block the loop - aiocop will catch it!
+    with open("/dev/null", "w") as f:
+        f.write("data")
+    await asyncio.sleep(0.1)
 
-# 4. Activate monitoring when your app is ready
-aiocop.activate()
+
+async def main():
+    aiocop.patch_audit_functions()
+    aiocop.start_blocking_io_detection()
+    aiocop.detect_slow_tasks(threshold_ms=10, on_slow_task=on_slow_task)
+    aiocop.activate()
+
+    await asyncio.gather(blocking_task(), blocking_task())
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+```bash
+python test_aiocop.py
+# Output:
+# SLOW TASK DETECTED: 102.3ms
+#   Severity: medium
+#   - open(/dev/null, w) at test_aiocop.py:14:blocking_task
 ```
 
 ## Usage with ASGI (FastAPI, Starlette, etc.)

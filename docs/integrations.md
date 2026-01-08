@@ -4,6 +4,7 @@ Real-world examples of integrating aiocop with popular frameworks and tools.
 
 ## Table of Contents
 
+- [Standalone (No Framework)](#standalone-no-framework)
 - [FastAPI](#fastapi)
 - [Starlette](#starlette)
 - [aiohttp](#aiohttp)
@@ -11,6 +12,71 @@ Real-world examples of integrating aiocop with popular frameworks and tools.
 - [Prometheus](#prometheus)
 - [Structured Logging](#structured-logging)
 - [Sentry](#sentry)
+
+## Standalone (No Framework)
+
+A minimal example with no dependencies - just Python and aiocop:
+
+```python
+# test_aiocop.py
+import asyncio
+import aiocop
+
+
+def on_slow_task(event):
+    print(f"SLOW TASK DETECTED: {event.elapsed_ms:.1f}ms")
+    print(f"  Severity: {event.severity_level}")
+    print(f"  Blocking events: {len(event.blocking_events)}")
+    for evt in event.blocking_events:
+        print(f"  - {evt['event']} at {evt['entry_point']}")
+
+
+async def blocking_task():
+    print("Executing task...")
+    # This synchronous open() will block the loop!
+    with open("/dev/null", "w") as f:
+        f.write("data")
+    await asyncio.sleep(0.1)
+
+
+async def main():
+    # Setup aiocop
+    aiocop.patch_audit_functions()
+    aiocop.start_blocking_io_detection(trace_depth=5)
+    aiocop.detect_slow_tasks(threshold_ms=10, on_slow_task=on_slow_task)
+    aiocop.activate()
+
+    # Run your code as normal
+    await asyncio.gather(blocking_task(), blocking_task())
+
+    aiocop.deactivate()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+Run it:
+
+```bash
+pip install aiocop
+python test_aiocop.py
+```
+
+Output:
+
+```
+Executing task...
+Executing task...
+SLOW TASK DETECTED: 102.3ms
+  Severity: medium
+  Blocking events: 1
+  - open(/dev/null, w) at test_aiocop.py:15:blocking_task
+SLOW TASK DETECTED: 103.1ms
+  Severity: medium
+  Blocking events: 1
+  - open(/dev/null, w) at test_aiocop.py:15:blocking_task
+```
 
 ## FastAPI
 
