@@ -9,6 +9,8 @@ edit_uri: edit/master/docs/
 
 theme:
   name: material
+  logo: images/aiocop_logo.png
+  favicon: images/aiocop_logo.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
