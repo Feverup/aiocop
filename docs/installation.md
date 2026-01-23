@@ -4,6 +4,7 @@
 
 - **Python 3.10 or higher**
 - No additional dependencies required
+- **uvloop** (optional): aiocop works with both standard asyncio and uvloop out of the box
 
 ## Install from PyPI
 

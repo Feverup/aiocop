@@ -17,6 +17,7 @@
 ## Features
 
 * **Production-Safe & Low Overhead**: Leverages Python's `sys.audit` hooks for minimal runtime overhead, making it safe for production use
+* **Works with asyncio and uvloop**: Compatible with both standard asyncio and uvloop event loops out of the box
 * **Blocking I/O Detection**: Automatically detects blocking I/O calls (file operations, network calls, subprocess, etc.) in your async code
 * **Stack Trace Capture**: Captures full stack traces to pinpoint exactly where blocking calls originate
 * **Severity Scoring**: Assigns severity scores to blocking events to help prioritize fixes
@@ -30,7 +31,7 @@
   <img src="https://raw.githubusercontent.com/feverup/aiocop/master/docs/images/explanation_diagram.png" alt="aiocop architecture diagram">
 </p>
 
-aiocop wraps `asyncio.Handle._run` (the method that executes every task in the event loop) and uses Python's `sys.audit` hooks to detect blocking calls. When your code calls a blocking function like `open()`, the audit event is captured along with the full stack trace—letting you know exactly where the problem is.
+aiocop wraps the event loop's scheduling methods (`call_soon`, `call_later`, etc.) and uses Python's `sys.audit` hooks to detect blocking calls. This approach works with both standard asyncio and uvloop. When your code calls a blocking function like `open()`, the audit event is captured along with the full stack trace—letting you know exactly where the problem is.
 
 ## Why aiocop?
 
@@ -47,6 +48,7 @@ aiocop was built to solve specific production constraints that existing approach
 | Production Overhead | Low-Medium | High | Very Low (~13μs/task) |
 | Stack Traces | Yes | No (timing only) | Yes |
 | Runtime Control | Varies | Flag at startup | Dynamic on/off |
+| uvloop Support | Varies | No | Yes |
 
 ## Performance
 

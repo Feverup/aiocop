@@ -1,6 +1,7 @@
 """Shared state management for aiocop monitoring."""
 
 import threading
+from collections.abc import Callable
 from contextvars import ContextVar
 
 _thread_local = threading.local()
@@ -11,11 +12,22 @@ raise_on_violations: ContextVar[bool] = ContextVar("raise_on_violations", defaul
 
 _exception_raised = False
 
+_on_activate_hooks: list[Callable[[], object]] = []
+
+
+def register_on_activate_hook(hook: Callable[[], object]) -> None:
+    """Register a hook to be called when monitoring is activated."""
+    if hook not in _on_activate_hooks:
+        _on_activate_hooks.append(hook)
+
 
 def activate() -> None:
     """Activate monitoring. Call this after startup when you want to start detecting blocking IO."""
     global _monitoring_active
     _monitoring_active = True
+
+    for hook in _on_activate_hooks:
+        hook()
 
 
 def deactivate() -> None:

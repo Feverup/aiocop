@@ -45,6 +45,7 @@ aiocop.activate()
 ## Features
 
 - **Production-Safe**: Minimal runtime overhead using Python's audit hooks
+- **asyncio & uvloop**: Works with both standard asyncio and uvloop out of the box
 - **Blocking I/O Detection**: Detects file operations, network calls, subprocess, `time.sleep`, and more
 - **Stack Trace Capture**: Full stack traces to pinpoint blocking calls
 - **Severity Scoring**: Prioritize fixes based on impact
