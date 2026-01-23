@@ -2,7 +2,11 @@
 
 aiocop is designed to be production-safe with minimal overhead. This page documents performance characteristics and how to run benchmarks yourself.
 
+aiocop works with both standard asyncio and uvloop, with similar low overhead on both.
+
 ## Summary
+
+### asyncio
 
 | Scenario | Per-Task Overhead | Impact on 50ms Request |
 |----------|-------------------|------------------------|
@@ -11,7 +15,16 @@ aiocop is designed to be production-safe with minimal overhead. This page docume
 | Moderate blocking (file read) | ~12 us | 0.02% |
 | Realistic HTTP handler | ~22 us | 0.04% |
 
-**Bottom line:** aiocop adds ~13 microseconds per task on average. For typical web applications where requests take 10-100ms, this translates to **less than 0.05% overhead**.
+### uvloop
+
+| Scenario | Per-Task Overhead | Impact on 50ms Request |
+|----------|-------------------|------------------------|
+| Pure async (no blocking I/O) | ~3 us | 0.006% |
+| Light blocking (os.stat) | ~29 us | 0.06% |
+| Moderate blocking (file read) | ~17 us | 0.03% |
+| Realistic HTTP handler | ~56 us | 0.11% |
+
+**Bottom line:** aiocop adds ~13 microseconds per task on asyncio and ~27 microseconds on uvloop. For typical web applications where requests take 10-100ms, this translates to **less than 0.1% overhead** on either event loop.
 
 ## Understanding the Numbers
 
@@ -41,11 +54,14 @@ If your application:
 Run the included benchmark script:
 
 ```bash
-# With uv
+# Run both asyncio and uvloop benchmarks
 uv run python benchmarks/run_benchmark.py
 
-# Or directly
-python benchmarks/run_benchmark.py
+# Run only asyncio benchmarks
+uv run python benchmarks/run_benchmark.py --asyncio-only
+
+# Run only uvloop benchmarks
+uv run python benchmarks/run_benchmark.py --uvloop-only
 ```
 
 ### Sample Output
@@ -55,10 +71,10 @@ python benchmarks/run_benchmark.py
 aiocop Benchmark Results
 ======================================================================
 
-Per-Task Overhead (lower is better):
-
-  Scenario                                 Overhead        Impact on 50ms request
-  ---------------------------------------- --------------- ----------------------
+ASYNCIO Results:
+----------------------------------------------------------------------
+  Scenario                                 Overhead        Impact on 50ms
+  ---------------------------------------- --------------- --------------
   Pure async (no blocking)                      1.2 us      0.002%
   Trivial blocking (getcwd)                    15.3 us      0.031%
   Light blocking (stat)                        13.5 us      0.027%
@@ -67,12 +83,30 @@ Per-Task Overhead (lower is better):
 
   Average: 12.8 us per task (0.026% on 50ms request)
 
+UVLOOP Results:
 ----------------------------------------------------------------------
+  Scenario                                 Overhead        Impact on 50ms
+  ---------------------------------------- --------------- --------------
+  Pure async (no blocking)                      2.7 us      0.005%
+  Trivial blocking (getcwd)                    29.5 us      0.059%
+  Light blocking (stat)                        28.4 us      0.057%
+  Moderate blocking (file read)                16.8 us      0.034%
+  Realistic HTTP handler                       56.4 us      0.113%
 
-What this means:
-  - Each async task adds ~13 microseconds of overhead
-  - A typical 50ms HTTP request sees 0.03% overhead
-  - A typical 100ms database query sees 0.01% overhead
+  Average: 26.8 us per task (0.054% on 50ms request)
+
+======================================================================
+COMPARISON: asyncio vs uvloop
+======================================================================
+  Scenario                       asyncio      uvloop       Difference
+  ------------------------------ ------------ ------------ ------------
+  Pure async (no blocking)            1.2 us        2.7 us   +1.5 us
+  Trivial blocking (getcwd)          15.3 us       29.5 us   +14.2 us
+  Light blocking (stat)              13.5 us       28.4 us   +14.9 us
+  Moderate blocking (file read)      12.3 us       16.8 us   +4.5 us
+  Realistic HTTP handler             21.6 us       56.4 us   +34.8 us
+
+  Average                            12.8 us       26.8 us   +14.0 us
 ```
 
 ## Tuning for Performance

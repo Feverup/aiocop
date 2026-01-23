@@ -42,7 +42,7 @@ aiocop.detect_slow_tasks(
 ) -> None
 ```
 
-Patches the asyncio event loop to detect slow tasks.
+Patches the event loop to detect slow tasks. Works with both standard asyncio and uvloop.
 
 **Parameters:**
 - `threshold_ms`: Threshold in milliseconds. Tasks exceeding this have `exceeded_threshold=True`. Default: 30.
