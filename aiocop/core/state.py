@@ -16,11 +16,7 @@ _on_activate_hooks: list[Callable[[], object]] = []
 
 
 def register_on_activate_hook(hook: Callable[[], object]) -> None:
-    """Register a hook to be called when monitoring is activated.
-
-    This allows other modules to perform setup that requires a running event loop
-    without creating circular imports.
-    """
+    """Register a hook to be called when monitoring is activated."""
     if hook not in _on_activate_hooks:
         _on_activate_hooks.append(hook)
 
@@ -30,7 +26,6 @@ def activate() -> None:
     global _monitoring_active
     _monitoring_active = True
 
-    # Run registered hooks (e.g., to patch the event loop)
     for hook in _on_activate_hooks:
         hook()
 

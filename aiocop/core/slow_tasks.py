@@ -25,6 +25,7 @@ from aiocop.core.state import (
     _reset_exception_flag,
     is_monitoring_active,
     raise_on_violations,
+    register_on_activate_hook,
 )
 from aiocop.exceptions import HighSeverityBlockingIoException
 from aiocop.types.events import BlockingEventInfo, SlowTaskEvent
@@ -81,22 +82,14 @@ def detect_slow_tasks(
 
     _detect_slow_tasks_configured = True
 
-    # Register hook to patch the loop when activate() is called
-    # This handles the case where detect_slow_tasks() is called outside an async context
-    from aiocop.core.state import register_on_activate_hook
-
     register_on_activate_hook(_ensure_loop_patched)
 
-    # Also try to patch immediately if we're already in an async context
     _ensure_loop_patched()
 
 
 def _ensure_loop_patched() -> bool:
     """
     Ensure the current event loop is patched for slow task detection.
-
-    Returns True if the loop is patched (either now or previously).
-    Returns False if no running loop or detect_slow_tasks() hasn't been called.
     """
     if not _detect_slow_tasks_configured:
         return False
@@ -104,10 +97,8 @@ def _ensure_loop_patched() -> bool:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        # No running loop yet, will patch later when activate() is called
         return False
 
-    # Check if this specific loop instance is already patched
     if getattr(loop, "_aiocop_patched", False):
         return True
 
@@ -120,7 +111,6 @@ def _ensure_loop_patched() -> bool:
 def _patch_loop(loop: asyncio.AbstractEventLoop) -> None:
     """Patch the event loop's scheduling methods to monitor callback execution."""
 
-    # Patch call_soon
     original_call_soon = loop.call_soon
 
     def patched_call_soon(callback: Callable[..., Any], *args: Any, context: Any = None) -> Any:
@@ -129,7 +119,6 @@ def _patch_loop(loop: asyncio.AbstractEventLoop) -> None:
 
     loop.call_soon = patched_call_soon  # type: ignore[method-assign]
 
-    # Patch call_later
     original_call_later = loop.call_later
 
     def patched_call_later(delay: float, callback: Callable[..., Any], *args: Any, context: Any = None) -> Any:
@@ -138,7 +127,6 @@ def _patch_loop(loop: asyncio.AbstractEventLoop) -> None:
 
     loop.call_later = patched_call_later  # type: ignore[method-assign]
 
-    # Patch call_at
     original_call_at = loop.call_at
 
     def patched_call_at(when: float, callback: Callable[..., Any], *args: Any, context: Any = None) -> Any:
@@ -147,7 +135,6 @@ def _patch_loop(loop: asyncio.AbstractEventLoop) -> None:
 
     loop.call_at = patched_call_at  # type: ignore[method-assign]
 
-    # Patch call_soon_threadsafe
     original_call_soon_threadsafe = loop.call_soon_threadsafe
 
     def patched_call_soon_threadsafe(callback: Callable[..., Any], *args: Any, context: Any = None) -> Any:
@@ -166,7 +153,6 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
     """
 
     def monitored_wrapper() -> Any:
-        # Fast path when monitoring is disabled
         if not is_monitoring_active():
             if args:
                 return callback(*args)
@@ -215,8 +201,6 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     blocking_events=formatted_events,
                 )
 
-                # We're already running in the callback's context, so contextvars
-                # are accessible. Invoke callbacks directly.
                 _invoke_callbacks_with_context(slow_task_event)
 
                 if exceeded_threshold is True:
@@ -248,9 +232,6 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
 def _invoke_callbacks_with_context(event: SlowTaskEvent) -> None:
     """
     Capture context and invoke callbacks.
-
-    This is called from within the callback's execution context, so context
-    providers (like ddtrace span) can access the correct contextvars.
     """
     captured_context = _capture_context()
     event_with_context = replace(event, context=captured_context)
