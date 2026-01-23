@@ -104,7 +104,7 @@ def _ensure_loop_patched() -> bool:
 
     _patch_loop(loop)
     loop._aiocop_patched = True  # type: ignore[attr-defined]
-    logger.info("Event loop patched for slow task detection (works with asyncio and uvloop)")
+    logger.info("Event loop patched for slow task detection")
     return True
 
 
