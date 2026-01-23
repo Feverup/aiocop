@@ -66,7 +66,7 @@ def _capture_context() -> dict[str, Any]:
             if provider_context is not None:
                 context.update(provider_context)
         except Exception as e:
-            logger.warning("Error in context provider %s: %s", provider.__name__, e)
+            logger.warning("Error in context provider %s: %s", getattr(provider, "__name__", repr(provider)), e)
 
     return context
 
@@ -81,4 +81,4 @@ def _invoke_slow_task_callbacks(event: SlowTaskEvent) -> None:
         try:
             callback(event)
         except Exception as e:
-            logger.warning("Error in slow task callback %s: %s", callback.__name__, e)
+            logger.warning("Error in slow task callback %s: %s", getattr(callback, "__name__", repr(callback)), e)

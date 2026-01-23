@@ -1,5 +1,10 @@
 """Exceptions for aiocop."""
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from aiocop.types.events import BlockingEventInfo
+
 
 class HighSeverityBlockingIoException(Exception):
     """Exception raised when high-severity blocking I/O is detected in async context."""
@@ -10,7 +15,7 @@ class HighSeverityBlockingIoException(Exception):
         severity_level: str,
         elapsed_ms: float,
         threshold_ms: float,
-        events: list[dict[str, str]],
+        events: "list[BlockingEventInfo]",
     ) -> None:
         self.severity_score = severity_score
         self.severity_level = severity_level
