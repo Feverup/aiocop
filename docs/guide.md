@@ -23,14 +23,14 @@ aiocop uses three mechanisms to detect blocking I/O:
 
 2. **Audit Hook Registration** (`start_blocking_io_detection`): Registers a `sys.audit` hook that listens for blocking I/O events and captures stack traces.
 
-3. **Event Loop Patching** (`detect_slow_tasks`): Patches `asyncio.Handle._run` to measure task execution time and invoke callbacks when blocking is detected.
+3. **Event Loop Patching** (`detect_slow_tasks`): Patches the event loop's scheduling methods (`call_soon`, `call_later`, `call_at`) to measure task execution time and invoke callbacks when blocking is detected. This approach works with both standard asyncio and uvloop.
 
 ![aiocop architecture diagram](images/explanation_diagram.png)
 
 The diagram above shows the complete flow:
 
-1. The **Event Loop** schedules a task via `Handle._run`
-2. **aiocop's wrapper** starts a timer and creates an events list
+1. The **Event Loop** schedules a callback via `call_soon` (or similar)
+2. **aiocop's wrapper** intercepts the callback, starts a timer and creates an events list
 3. Your **task code** executes
 4. When a blocking function (like `open()`) is called, the **Python VM** (for native functions) or **aiocop's wrapper** (for patched functions) emits a `sys.audit` event
 5. The **audit hook** captures the event and stack trace, appending it to the events list
