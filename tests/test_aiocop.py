@@ -416,6 +416,7 @@ class TestContextProviders:
 
     def test_register_unregister_context_provider(self) -> None:
         """Test registering and unregistering context providers."""
+
         def my_provider() -> dict[str, Any]:
             return {}
 
@@ -705,6 +706,48 @@ class TestRaiseOnViolationsIntegration:
         )
         # If we get here, no exception was raised - test passes
 
+    def test_exception_propagates_through_event_loop(self, setup_aiocop) -> None:
+        """Test that HighSeverityBlockingIoException propagates and crashes the event loop.
+
+        This test verifies that when raise_on_violations is enabled and high-severity
+        blocking I/O is detected, the exception propagates through asyncio's exception
+        handler and can crash the worker (rather than just being logged).
+
+        We use a fresh event loop to isolate this test and avoid affecting other tests.
+        """
+        import asyncio
+
+        # Create a fresh event loop for this test to avoid affecting other tests
+        loop = asyncio.new_event_loop()
+
+        # We need to patch this new loop for aiocop
+        from aiocop.core.slow_tasks import _patch_loop
+
+        _patch_loop(loop)
+
+        # Enable raise_on_violations and activate BEFORE running the coroutine
+        # The audit hook checks raise_on_violations.get() when it captures events
+        aiocop.enable_raise_on_violations()
+        aiocop.activate()
+
+        async def task_with_high_severity_blocking():
+            # time.sleep has WEIGHT_HEAVY = 50, which is high severity
+            time.sleep(0.02)
+
+        # The exception should propagate up through run_until_complete
+        with pytest.raises(aiocop.HighSeverityBlockingIoException) as exc_info:
+            loop.run_until_complete(task_with_high_severity_blocking())
+
+        # Verify it's the correct exception with expected attributes
+        assert exc_info.value.severity_score >= 50
+        assert exc_info.value.severity_level == "high"
+        assert any("time.sleep" in e["event"] for e in exc_info.value.events)
+
+        # Clean up
+        loop.close()
+        aiocop.disable_raise_on_violations()
+        aiocop.deactivate()
+
 
 # =============================================================================
 # Edge Case Tests
@@ -726,11 +769,13 @@ class TestEdgeCases:
 
         # Internal check - callback list should only have one entry
         from aiocop.core.callbacks import _slow_task_callbacks
+
         count = sum(1 for cb in _slow_task_callbacks if cb == my_callback)
         assert count == 1
 
     def test_unregister_nonexistent_callback(self) -> None:
         """Test that unregistering a non-existent callback doesn't raise."""
+
         def my_callback(event: SlowTaskEvent) -> None:
             pass
 
@@ -739,6 +784,7 @@ class TestEdgeCases:
 
     def test_duplicate_context_provider_registration(self) -> None:
         """Test that registering the same provider twice doesn't duplicate it."""
+
         def my_provider() -> dict[str, Any]:
             return {}
 
@@ -746,6 +792,7 @@ class TestEdgeCases:
         aiocop.register_context_provider(my_provider)  # Duplicate
 
         from aiocop.core.callbacks import _context_providers
+
         count = sum(1 for p in _context_providers if p == my_provider)
         assert count == 1
 

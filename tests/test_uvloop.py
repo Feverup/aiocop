@@ -75,6 +75,7 @@ class TestUvloopWithRun:
 
     def test_uvloop_run_uses_uvloop(self):
         """Verify that uvloop.run() actually uses uvloop."""
+
         async def check_loop():
             loop = asyncio.get_running_loop()
             return type(loop).__name__
@@ -117,6 +118,7 @@ class TestUvloopWithRun:
 
     def test_loop_is_patched_with_uvloop_run(self, reset_aiocop_state):
         """Test that uvloop loop gets patched correctly."""
+
         async def main():
             aiocop.patch_audit_functions()
             aiocop.start_blocking_io_detection(trace_depth=10)

@@ -111,6 +111,17 @@ def _ensure_loop_patched() -> bool:
 def _patch_loop(loop: asyncio.AbstractEventLoop) -> None:
     """Patch the event loop's scheduling methods to monitor callback execution."""
 
+    # Re-raise HighSeverityBlockingIoException
+    original_exception_handler = loop.call_exception_handler
+
+    def patched_exception_handler(context: dict[str, Any]) -> None:
+        exception = context.get("exception")
+        if isinstance(exception, HighSeverityBlockingIoException):
+            raise exception
+        return original_exception_handler(context)
+
+    loop.call_exception_handler = patched_exception_handler  # type: ignore[method-assign]
+
     original_call_soon = loop.call_soon
 
     def patched_call_soon(callback: Callable[..., Any], *args: Any, context: Any = None) -> Any:

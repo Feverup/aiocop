@@ -33,14 +33,14 @@ class HighSeverityBlockingIoException(Exception):
             events_str = "".join(events_list)
 
         return (
-            f"\n{'='*80}\n"
+            f"\n{'=' * 80}\n"
             f"HIGH SEVERITY BLOCKING I/O DETECTED\n"
-            f"{'='*80}\n"
+            f"{'=' * 80}\n"
             f"Async task exceeded threshold:\n"
             f"  - Severity Score: {self.severity_score}\n"
             f"  - Severity Level: {self.severity_level}\n"
             f"  - Elapsed Time: {self.elapsed_ms:.2f}ms\n"
             f"  - Threshold: {self.threshold_ms:.2f}ms\n"
             f"\nBlocking I/O Events:{events_str}\n"
-            f"{'='*80}\n"
+            f"{'=' * 80}\n"
         )
