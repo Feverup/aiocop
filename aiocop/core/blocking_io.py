@@ -139,6 +139,11 @@ def _audit_hook(event: str, args: tuple) -> None:
         if raise_on_violations.get() is True:
             thread_local.should_raise_for_this_handle = True
 
+        if len(events_list) == 0 and getattr(thread_local, "blocking_context", None) is None:
+            from aiocop.core.callbacks import _capture_context
+
+            thread_local.blocking_context = _capture_context()
+
         raw_stack = _capture_raw_stack_frames(limit=_trace_depth)
         severity = BLOCKING_EVENTS_DICT.get(event)
 

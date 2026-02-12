@@ -174,6 +174,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
 
         previous_events = getattr(thread_local, "blocking_events", None)
         thread_local.blocking_events = captured_events
+        thread_local.blocking_context = None
         thread_local.should_raise_for_this_handle = False
 
         _reset_exception_flag()
@@ -202,6 +203,8 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
 
             has_events = len(captured_events) > 0
 
+            blocking_context = getattr(thread_local, "blocking_context", None)
+
             if has_events is True:
                 formatted_events = [format_blocking_event(evt) for evt in captured_events]
                 io_severity = calculate_io_severity_score(formatted_events)
@@ -217,7 +220,9 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     blocking_events=formatted_events,
                 )
 
-                _invoke_callbacks_with_context(slow_task_event, captured_context)
+                _invoke_callbacks_with_context(
+                    slow_task_event, blocking_context if blocking_context is not None else captured_context
+                )
 
                 if exceeded_threshold is True:
                     _check_and_raise_if_needed(elapsed, formatted_events, should_raise)

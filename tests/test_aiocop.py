@@ -467,6 +467,52 @@ class TestContextProviders:
         )
 
     @pytest.mark.asyncio
+    async def test_context_captured_at_audit_hook_time_for_single_step_requests(
+        self, setup_aiocop, captured_events
+    ) -> None:
+        """Test context capture for single-step async requests (FastAPI/Starlette).
+
+        In single-step frameworks, the tracing middleware creates a span, runs the
+        endpoint, and finishes the span all within the same call_soon callback.
+        The span does NOT exist before callback(*args) and is already deactivated
+        after it returns. The only moment the span is active is during blocking I/O,
+        when the audit hook fires. Context must be captured at that point.
+        """
+        aiocop.activate()
+
+        # Simulate a span that is created INSIDE the callback and finished
+        # before callback returns — mirrors ddtrace ASGI middleware behavior.
+        span_state: dict[str, Any] = {}
+
+        def tracing_context_provider() -> dict[str, Any]:
+            return {"active_span": span_state.get("span_id")}
+
+        aiocop.register_context_provider(tracing_context_provider)
+
+        async def single_step_asgi_callback():
+            # 1. Middleware creates the span (inside the callback)
+            span_state["span_id"] = "span-456"
+            # 2. Endpoint handler does blocking I/O — audit hook fires here
+            time.sleep(0.015)
+            # 3. Middleware finishes the span
+            span_state.pop("span_id", None)
+
+        task = asyncio.create_task(single_step_asgi_callback())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.reason == "io_blocking"
+        # Context captured at audit-hook time must see the active span.
+        # Pre-callback capture would return None (span not yet created).
+        # Post-callback capture would return None (span already finished).
+        assert event.context.get("active_span") == "span-456", (
+            "Context was not captured at audit-hook time. "
+            "In single-step requests the span only exists during the blocking call."
+        )
+
+    @pytest.mark.asyncio
     async def test_context_provider_exception_is_caught(self, setup_aiocop, captured_events) -> None:
         """Test that exceptions in context providers are caught and logged."""
         aiocop.activate()
