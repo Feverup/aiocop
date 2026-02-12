@@ -426,6 +426,47 @@ class TestContextProviders:
         aiocop.clear_context_providers()
 
     @pytest.mark.asyncio
+    async def test_context_provider_called_before_callback(self, setup_aiocop, captured_events) -> None:
+        """Test that context providers run BEFORE the callback, not after.
+
+        Reproduces the real-world issue where tracing middleware (e.g. ddtrace)
+        creates a span, runs the handler, and calls span.finish() all within
+        the same event-loop callback. If context were captured after the
+        callback returns, the span would already be deactivated and the
+        provider would return None.
+        """
+        aiocop.activate()
+
+        # Simulate an active tracing span that gets deactivated by the callback
+        active_span = {"span_id": "abc-123"}
+
+        def tracing_context_provider() -> dict[str, Any]:
+            """Mimics ddtrace's tracer.current_span() — returns None after finish()."""
+            return {"current_span": active_span.get("span_id")}
+
+        aiocop.register_context_provider(tracing_context_provider)
+
+        async def task_that_deactivates_span():
+            # Blocking I/O to trigger a SlowTaskEvent
+            time.sleep(0.015)
+            # Simulate span.finish() clearing the active span
+            active_span.pop("span_id", None)
+
+        task = asyncio.create_task(task_that_deactivates_span())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        # Context must have been captured BEFORE the callback ran,
+        # so the span was still active. If this is None, context was
+        # captured too late (after the callback deactivated the span).
+        assert event.context.get("current_span") == "abc-123", (
+            "Context provider was called after the callback instead of before. "
+            "The span was already deactivated by the time context was captured."
+        )
+
+    @pytest.mark.asyncio
     async def test_context_provider_exception_is_caught(self, setup_aiocop, captured_events) -> None:
         """Test that exceptions in context providers are caught and logged."""
         aiocop.activate()

@@ -177,6 +177,11 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
         thread_local.should_raise_for_this_handle = False
 
         _reset_exception_flag()
+
+        # Capture context BEFORE the callback runs, so that context providers
+        # (e.g. ddtrace span capture) see the active state at call time.
+        captured_context = _capture_context()
+
         t0 = perf_counter_ns()
 
         try:
@@ -212,7 +217,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     blocking_events=formatted_events,
                 )
 
-                _invoke_callbacks_with_context(slow_task_event)
+                _invoke_callbacks_with_context(slow_task_event, captured_context)
 
                 if exceeded_threshold is True:
                     _check_and_raise_if_needed(elapsed, formatted_events, should_raise)
@@ -228,7 +233,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     blocking_events=[],
                 )
 
-                _invoke_callbacks_with_context(slow_task_event)
+                _invoke_callbacks_with_context(slow_task_event, captured_context)
 
         except HighSeverityBlockingIoException:
             raise
@@ -240,11 +245,10 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
     return monitored_wrapper
 
 
-def _invoke_callbacks_with_context(event: SlowTaskEvent) -> None:
+def _invoke_callbacks_with_context(event: SlowTaskEvent, captured_context: dict[str, Any]) -> None:
     """
-    Capture context and invoke callbacks.
+    Attach pre-captured context to the event and invoke callbacks.
     """
-    captured_context = _capture_context()
     event_with_context = replace(event, context=captured_context)
     _invoke_slow_task_callbacks(event_with_context)
 

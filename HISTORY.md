@@ -1,5 +1,9 @@
 # History
 
+## 1.1.2 (2026-02-12)
+
+* Capture context provider before call
+
 ## 1.0.0 (2026-01-07)
 
 * First stable release
