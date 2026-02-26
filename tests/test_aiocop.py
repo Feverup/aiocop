@@ -513,6 +513,148 @@ class TestContextProviders:
         )
 
     @pytest.mark.asyncio
+    async def test_post_context_used_when_pre_context_is_none(self, setup_aiocop, captured_events) -> None:
+        """Test that post-callback context is used when pre-callback context returns None.
+
+        Covers the case where a span is only set AFTER the callback starts
+        (e.g. middleware creates the span inside the event loop callback).
+        """
+        aiocop.activate()
+
+        span_state: dict[str, Any] = {}
+
+        def late_span_provider() -> dict[str, Any]:
+            return {"span_id": span_state.get("span_id")}
+
+        aiocop.register_context_provider(late_span_provider)
+
+        async def task_where_span_set_during_execution():
+            # Span doesn't exist yet when pre_context is captured
+            span_state["span_id"] = "late-span-789"
+            time.sleep(0.015)
+            # Span still active when post_context is captured
+
+        task = asyncio.create_task(task_where_span_set_during_execution())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context.get("span_id") == "late-span-789", (
+            "Post-callback context was not used. The span set during execution "
+            "should have been picked up by post_context capture."
+        )
+
+    @pytest.mark.asyncio
+    async def test_pre_context_preserved_when_post_context_returns_none(self, setup_aiocop, captured_events) -> None:
+        """Test that pre-callback context is preserved when post-callback context returns None.
+
+        Covers the case where a span is active before the callback but gets
+        deactivated during execution (e.g. span.finish() called inside the handler).
+        """
+        aiocop.activate()
+
+        span_state: dict[str, Any] = {"span_id": "pre-span-123"}
+
+        def span_provider() -> dict[str, Any]:
+            return {"span_id": span_state.get("span_id")}
+
+        aiocop.register_context_provider(span_provider)
+
+        async def task_that_clears_span():
+            time.sleep(0.015)
+            span_state.pop("span_id", None)
+
+        task = asyncio.create_task(task_that_clears_span())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context.get("span_id") == "pre-span-123", (
+            "Pre-callback context was lost. When post_context returns None for a key, "
+            "the pre_context value should be preserved."
+        )
+
+    @pytest.mark.asyncio
+    async def test_pre_and_post_context_merged_best_of_both(self, setup_aiocop, captured_events) -> None:
+        """Test that pre and post context are merged, keeping the best of both.
+
+        When one provider has a value before but not after, and another has a
+        value after but not before, both values should appear in the final context.
+        """
+        aiocop.activate()
+
+        early_state: dict[str, Any] = {"trace_id": "trace-abc"}
+        late_state: dict[str, Any] = {}
+
+        def early_provider() -> dict[str, Any]:
+            return {"trace_id": early_state.get("trace_id")}
+
+        def late_provider() -> dict[str, Any]:
+            return {"request_id": late_state.get("request_id")}
+
+        aiocop.register_context_provider(early_provider)
+        aiocop.register_context_provider(late_provider)
+
+        async def task_with_mixed_context():
+            # late_provider gets a value during execution
+            late_state["request_id"] = "req-456"
+            time.sleep(0.015)
+            # early_provider loses its value
+            early_state.pop("trace_id", None)
+
+        task = asyncio.create_task(task_with_mixed_context())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) >= 1
+        event = captured_events[0]
+        assert event.context.get("trace_id") == "trace-abc", (
+            "Pre-callback trace_id was lost even though post_context had None for it."
+        )
+        assert event.context.get("request_id") == "req-456", (
+            "Post-callback request_id was not picked up."
+        )
+
+    @pytest.mark.asyncio
+    async def test_post_context_overrides_pre_context_for_cpu_blocking(
+        self, setup_aiocop, captured_events
+    ) -> None:
+        """Test that post-context values override pre-context for cpu_blocking tasks.
+
+        When there are no blocking IO events (pure CPU work), blocking_context
+        is not set, so the pre/post merged captured_context is used directly.
+        Post non-None values should override pre values.
+        """
+        aiocop.activate()
+
+        span_state: dict[str, Any] = {"span_id": "old-span"}
+
+        def span_provider() -> dict[str, Any]:
+            return {"span_id": span_state.get("span_id")}
+
+        aiocop.register_context_provider(span_provider)
+
+        async def cpu_task_that_updates_span():
+            span_state["span_id"] = "new-span"
+            # CPU-bound work without IO to trigger cpu_blocking path
+            start = time.perf_counter()
+            while time.perf_counter() - start < 0.02:
+                sum(range(1000))
+
+        task = asyncio.create_task(cpu_task_that_updates_span())
+        await task
+        await asyncio.sleep(0)
+
+        slow_events = [e for e in captured_events if e.exceeded_threshold]
+        if len(slow_events) > 0:
+            event = slow_events[0]
+            assert event.context.get("span_id") == "new-span", (
+                "Post-callback value should override pre-callback value when both are non-None."
+            )
+
+    @pytest.mark.asyncio
     async def test_context_provider_exception_is_caught(self, setup_aiocop, captured_events) -> None:
         """Test that exceptions in context providers are caught and logged."""
         aiocop.activate()

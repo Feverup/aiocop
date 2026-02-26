@@ -179,9 +179,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
 
         _reset_exception_flag()
 
-        # Capture context BEFORE the callback runs, so that context providers
-        # (e.g. ddtrace span capture) see the active state at call time.
-        captured_context = _capture_context()
+        pre_context = _capture_context()
 
         t0 = perf_counter_ns()
 
@@ -192,6 +190,9 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                 return_value = callback()
         finally:
             thread_local.blocking_events = previous_events
+
+        post_context = _capture_context()
+        captured_context = {**pre_context, **{k: v for k, v in post_context.items() if v is not None}}
 
         should_raise = getattr(thread_local, "should_raise_for_this_handle", False)
 

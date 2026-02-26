@@ -1,5 +1,9 @@
 # History
 
+## 1.1.4 (2026-02-26)
+
+* Capture context both before and after callback execution, merging non-None post values over pre values to handle spans set lazily
+
 ## 1.1.2 (2026-02-12)
 
 * Capture context provider before call
