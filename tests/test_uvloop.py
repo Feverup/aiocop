@@ -23,7 +23,7 @@ if sys.platform == "win32":
     pytest.skip("uvloop not supported on Windows", allow_module_level=True)
 
 import aiocop  # noqa: E402
-from aiocop.core import audit_patcher, blocking_io, slow_tasks, state  # noqa: E402
+from aiocop.core import slow_tasks, state  # noqa: E402
 from aiocop.types.events import SlowTaskEvent  # noqa: E402
 
 # =============================================================================
@@ -37,13 +37,17 @@ def reset_aiocop_state():
 
     This is critical for uvloop tests since we need fresh state
     for each test to properly test loop patching.
+
+    Note: _detect_slow_tasks_configured is reset since it gates a fresh event
+    loop object created every test. _patch_audit_functions_configured and
+    _start_blocking_io_detection_configured are NOT reset - they guard
+    permanent, process-wide state with no teardown, so resetting them would
+    re-wrap functions and re-register the audit hook each test.
     """
     # Reset before test
     state._monitoring_active = False
     state._on_activate_hooks.clear()
     slow_tasks._detect_slow_tasks_configured = False
-    audit_patcher._patch_audit_functions_configured = False
-    blocking_io._start_blocking_io_detection_configured = False
     aiocop.clear_slow_task_callbacks()
     aiocop.clear_context_providers()
 
@@ -53,8 +57,6 @@ def reset_aiocop_state():
     state._monitoring_active = False
     state._on_activate_hooks.clear()
     slow_tasks._detect_slow_tasks_configured = False
-    audit_patcher._patch_audit_functions_configured = False
-    blocking_io._start_blocking_io_detection_configured = False
     aiocop.clear_slow_task_callbacks()
     aiocop.clear_context_providers()
 
