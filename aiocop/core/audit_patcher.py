@@ -11,7 +11,6 @@ from aiocop.types.severity import WEIGHT_HEAVY, WEIGHT_LIGHT, WEIGHT_MODERATE, W
 logger = logging.getLogger(__name__)
 
 FUNCTIONS_TO_PATCH_DICT: dict[str, int] = {
-    "time.sleep": WEIGHT_HEAVY,
     # --- Path & Metadata (Fast / Cached) ---
     "os.getcwd": WEIGHT_TRIVIAL,
     "os.path.abspath": WEIGHT_TRIVIAL,
@@ -47,6 +46,13 @@ FUNCTIONS_TO_PATCH_DICT: dict[str, int] = {
     "ssl.SSLSocket.recv": WEIGHT_MODERATE,
 }
 
+if sys.version_info < (3, 13):
+    # time.sleep only gained its own native sys.audit event in Python 3.13
+    # (https://docs.python.org/3/library/time.html#time.sleep). On older
+    # versions there is no native event, so it still needs to be patched here;
+    # on 3.13+ it's recognized directly via BLOCKING_EVENTS_DICT instead.
+    FUNCTIONS_TO_PATCH_DICT["time.sleep"] = WEIGHT_HEAVY
+
 FUNCTIONS_TO_PATCH = list(FUNCTIONS_TO_PATCH_DICT.keys())
 
 patched_functions: list[str] = []
@@ -77,7 +83,8 @@ def patch_audit_functions() -> None:
     Patch Python stdlib functions to emit audit events for blocking IO detection.
 
     This patches functions that don't have native audit events (like socket operations,
-    time.sleep, etc.) to emit custom audit events that can be captured by the audit hook.
+    or time.sleep on Python < 3.13) to emit custom audit events that can be captured by
+    the audit hook.
 
     Should be called early in application startup, before start_blocking_io_detection().
     """

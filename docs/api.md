@@ -14,7 +14,7 @@ Patches Python stdlib functions to emit audit events for blocking I/O detection.
 
 **Must be called first**, before `start_blocking_io_detection()`.
 
-Functions patched include `time.sleep`, socket operations, SSL operations, and various `os` functions that don't emit native audit events.
+Functions patched include socket operations, SSL operations, and various `os` functions that don't emit native audit events. Also includes `time.sleep` on Python < 3.13, which gained its own native audit event in 3.13.
 
 ---
 

@@ -1,6 +1,7 @@
 """Tests for aiocop package."""
 
 import asyncio
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -356,6 +357,46 @@ class TestBlockingIODetection:
         event = captured_events[0]
         assert event.severity_score >= 50  # time.sleep is WEIGHT_HEAVY
         assert event.severity_level == "high"
+
+
+# =============================================================================
+# time.sleep Event Count Tests
+# =============================================================================
+
+
+class TestTimeSleepEventCount:
+    """Regression tests: time.sleep gained its own native sys.audit event in
+    Python 3.13 (https://docs.python.org/3/library/time.html#time.sleep).
+    aiocop's own wrapper must not also emit one on 3.13+, or a single real
+    call gets double-counted.
+    """
+
+    def test_time_sleep_patched_only_below_py313(self) -> None:
+        from aiocop.core.audit_patcher import FUNCTIONS_TO_PATCH_DICT
+
+        assert ("time.sleep" in FUNCTIONS_TO_PATCH_DICT) == (sys.version_info < (3, 13))
+
+    def test_time_sleep_always_recognized_regardless_of_version(self) -> None:
+        assert "time.sleep" in get_blocking_events_dict()
+
+    @pytest.mark.asyncio
+    async def test_single_time_sleep_call_is_not_double_counted(self, setup_aiocop, captured_events) -> None:
+        aiocop.activate()
+
+        async def task_with_sleep():
+            time.sleep(0.02)
+
+        task = asyncio.create_task(task_with_sleep())
+        await task
+        await asyncio.sleep(0)
+
+        assert len(captured_events) == 1
+        event = captured_events[0]
+        sleep_events = [e for e in event.blocking_events if "time.sleep" in e["event"]]
+        assert len(sleep_events) == 1, (
+            f"expected exactly 1 time.sleep event, got {len(sleep_events)} - "
+            f"this Python version is {sys.version_info[:2]}"
+        )
 
 
 # =============================================================================
@@ -794,8 +835,12 @@ class TestCoreFunctions:
         patched = aiocop.get_patched_functions()
         assert isinstance(patched, list)
         assert len(patched) > 0
-        # Should include time.sleep
-        assert "time.sleep" in patched
+        # time.sleep is only patched below 3.13 - it gained its own native
+        # audit event in 3.13 (see TestTimeSleepEventCount).
+        assert ("time.sleep" in patched) == (sys.version_info < (3, 13))
+        # Control: only time.sleep is version-gated - everything else is
+        # patched unconditionally on every version.
+        assert "os.getcwd" in patched
 
     def test_get_blocking_events_dict(self) -> None:
         """Test that get_blocking_events_dict returns event weights."""
