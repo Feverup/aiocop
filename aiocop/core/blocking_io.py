@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 _main_thread_id: int | None = None
 _trace_depth: int = 20
+_start_blocking_io_detection_configured = False
 
 MAX_EVENTS_PER_TASK = 50
 
@@ -92,13 +93,19 @@ def start_blocking_io_detection(trace_depth: int = 20) -> None:
 
     Should be called after patch_audit_functions() and before detect_slow_tasks().
     """
-    global _main_thread_id, _trace_depth
+    global _main_thread_id, _trace_depth, _start_blocking_io_detection_configured
+
+    if _start_blocking_io_detection_configured is True:
+        logger.warning("start_blocking_io_detection called more than once, ignoring")
+        return
+
     _main_thread_id = threading.main_thread().ident
     _trace_depth = trace_depth
 
     try:
         sys.addaudithook(_audit_hook)
         logger.info("Blocking I/O detection hook registered via sys.audit")
+        _start_blocking_io_detection_configured = True
     except Exception as e:
         logger.error("Failed to register blocking I/O detection hook: %s", e)
 

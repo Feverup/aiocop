@@ -51,6 +51,8 @@ FUNCTIONS_TO_PATCH = list(FUNCTIONS_TO_PATCH_DICT.keys())
 
 patched_functions: list[str] = []
 
+_patch_audit_functions_configured = False
+
 
 def _get_target(path: str) -> tuple[Any | None, str | None]:
     """
@@ -81,6 +83,12 @@ def patch_audit_functions() -> None:
 
     Should be called early in application startup, before start_blocking_io_detection().
     """
+    global _patch_audit_functions_configured
+
+    if _patch_audit_functions_configured is True:
+        logger.warning("patch_audit_functions called more than once, ignoring")
+        return
+
     patched_functions.clear()
 
     for func_path in FUNCTIONS_TO_PATCH:
@@ -117,6 +125,8 @@ def patch_audit_functions() -> None:
         patched_functions.append(func_path)
 
     logger.info("Patched functions for audit: %s", patched_functions)
+
+    _patch_audit_functions_configured = True
 
 
 def get_patched_functions() -> list[str]:
