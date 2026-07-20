@@ -843,6 +843,49 @@ class TestCoreFunctions:
 
 
 # =============================================================================
+# Setup Idempotency Tests
+# =============================================================================
+
+
+class TestSetupIdempotency:
+    """Test that setup functions are safe to call more than once."""
+
+    def test_patch_audit_functions_twice_is_noop(self, setup_aiocop, caplog) -> None:
+        import os
+
+        # Checking that os.getcwd is not wrapped again by the second call (object identity).
+        before_func = os.getcwd
+
+        with caplog.at_level("WARNING"):
+            aiocop.patch_audit_functions()
+
+        assert os.getcwd is before_func
+        assert "patch_audit_functions called more than once" in caplog.text
+
+    def test_start_blocking_io_detection_twice_is_noop(self, setup_aiocop, caplog) -> None:
+        from aiocop.core import blocking_io
+
+        # Checking that trace_depth is not overwritten by the second call.
+        before_trace_depth = blocking_io._trace_depth
+
+        with caplog.at_level("WARNING"):
+            aiocop.start_blocking_io_detection(trace_depth=before_trace_depth + 999)
+
+        assert blocking_io._trace_depth == before_trace_depth
+        assert "start_blocking_io_detection called more than once" in caplog.text
+
+    def test_detect_slow_tasks_twice_is_noop(self, setup_aiocop, caplog) -> None:
+        # Checking that the threshold is not overwritten by the second call.
+        before_threshold = aiocop.get_slow_task_threshold_ms()
+
+        with caplog.at_level("WARNING"):
+            aiocop.detect_slow_tasks(threshold_ms=before_threshold + 999)
+
+        assert aiocop.get_slow_task_threshold_ms() == before_threshold
+        assert "detect_slow_tasks called more than once" in caplog.text
+
+
+# =============================================================================
 # Raise on Violations Integration Tests
 # =============================================================================
 
