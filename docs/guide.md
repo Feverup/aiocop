@@ -19,7 +19,7 @@ This guide covers all aiocop features in detail.
 
 aiocop uses three mechanisms to detect blocking I/O:
 
-1. **Audit Hook Patching** (`patch_audit_functions`): Wraps stdlib functions that don't emit native audit events (like `time.sleep`, socket operations) to emit custom audit events.
+1. **Audit Hook Patching** (`patch_audit_functions`): Wraps stdlib functions that don't emit native audit events (like socket operations, or `time.sleep` on Python < 3.13) to emit custom audit events.
 
 2. **Audit Hook Registration** (`start_blocking_io_detection`): Registers a `sys.audit` hook that listens for blocking I/O events and captures stack traces.
 
@@ -51,7 +51,7 @@ print(f"Patched {len(patched)} functions: {patched[:5]}...")
 ```
 
 Functions patched include:
-- `time.sleep`
+- `time.sleep` (Python < 3.13 only - it gained its own native audit event in 3.13)
 - `socket.socket.connect`, `send`, `recv`, etc.
 - `ssl.SSLSocket.read`, `write`, etc.
 - `os.stat`, `os.access`, etc.

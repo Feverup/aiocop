@@ -20,6 +20,8 @@ _start_blocking_io_detection_configured = False
 MAX_EVENTS_PER_TASK = 50
 
 BLOCKING_EVENTS_DICT: dict[str, int] = {
+    # --- Sleep ---
+    "time.sleep": WEIGHT_HEAVY,
     # --- Network Operations (Socket Level) ---
     "socket.getaddrinfo": WEIGHT_HEAVY,
     "socket.getnameinfo": WEIGHT_HEAVY,
