@@ -15,6 +15,7 @@ from dataclasses import replace
 from time import perf_counter_ns
 from typing import Any
 
+from aiocop.core import cpu_sampler
 from aiocop.core.blocking_io import format_blocking_event
 from aiocop.core.callbacks import _capture_context, _invoke_slow_task_callbacks
 from aiocop.core.severity import calculate_io_severity_score, get_severity_level_from_score
@@ -182,6 +183,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
         pre_context = _capture_context()
 
         t0 = perf_counter_ns()
+        cpu_sampler._slice_started(t0)
 
         try:
             if args:
@@ -190,6 +192,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                 return_value = callback()
         finally:
             thread_local.blocking_events = previous_events
+            raw_cpu_samples = cpu_sampler._slice_finished(t0)
 
         post_context = _capture_context()
         captured_context = {**pre_context, **{k: v for k, v in post_context.items() if v is not None}}
@@ -219,6 +222,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     severity_level=severity_level,
                     reason="io_blocking",
                     blocking_events=formatted_events,
+                    cpu_stack_samples=cpu_sampler.format_cpu_samples(raw_cpu_samples),
                 )
 
                 _invoke_callbacks_with_context(
@@ -237,6 +241,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     severity_level="low",
                     reason="cpu_blocking",
                     blocking_events=[],
+                    cpu_stack_samples=cpu_sampler.format_cpu_samples(raw_cpu_samples),
                 )
 
                 _invoke_callbacks_with_context(slow_task_event, captured_context)
