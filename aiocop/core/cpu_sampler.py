@@ -40,8 +40,12 @@ _AIOCOP_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))
 _sampler_started = False
 
 _interval_s: float = 0.010
-_idle_interval_s: float = 0.050
-_arm_after_ns: int = 15_000_000
+# None means "derived": arm defaults to half the slow-task threshold and idle
+# to min(50ms, arm). Derived values are never stored — _effective_arm_and_idle
+# computes them from the live threshold on every watchdog wake-up, so the call
+# order of start_cpu_sampling() and detect_slow_tasks() cannot matter.
+_arm_after_ns_override: int | None = None
+_idle_interval_s_override: float | None = None
 _max_samples_per_slice: int = 32
 _trace_depth: int = 20
 
@@ -65,7 +69,7 @@ _samples: list[list[tuple[str, int, str]]] = []
 def start_cpu_sampling(
     interval_ms: int = 10,
     arm_after_ms: int | None = None,
-    idle_interval_ms: int = 50,
+    idle_interval_ms: int | None = None,
     max_samples_per_slice: int = 32,
     trace_depth: int = 20,
 ) -> None:
@@ -81,28 +85,27 @@ def start_cpu_sampling(
         interval_ms: Sampling interval while a slice is running (default: 10ms).
         arm_after_ms: Minimum age of the current slice before sampling starts.
             Slices shorter than this are never sampled. Defaults to half the
-            slow-task threshold, so any slice that reaches the threshold has
-            been under sampling for the second half of its life.
+            slow-task threshold — and follows it if detect_slow_tasks()
+            (re)configures the threshold later — so sampling begins around
+            the midpoint of any slice that goes on to violate.
         idle_interval_ms: Watchdog wake-up interval while no slice is running,
-            trading idle CPU for sampling start latency (default: 50ms).
+            trading idle CPU for sampling start latency. Defaults to
+            min(50ms, arm_after_ms) so the first look at a fresh slice happens
+            no later than its arming age; a fixed 50ms would let slices just
+            over the threshold finish unobserved inside one idle sleep.
         max_samples_per_slice: Cap on samples kept per slice (default: 32).
         trace_depth: Number of stack frames captured per sample (default: 20).
     """
-    global _sampler_started, _interval_s, _idle_interval_s, _arm_after_ns
+    global _sampler_started, _interval_s, _arm_after_ns_override, _idle_interval_s_override
     global _max_samples_per_slice, _trace_depth
 
     if _sampler_started is True:
         logger.warning("start_cpu_sampling called more than once, ignoring")
         return
 
-    if arm_after_ms is None:
-        from aiocop.core.slow_tasks import get_slow_task_threshold_ms
-
-        arm_after_ms = max(1, int(get_slow_task_threshold_ms() // 2))
-
     _interval_s = interval_ms / 1000
-    _idle_interval_s = idle_interval_ms / 1000
-    _arm_after_ns = arm_after_ms * 1_000_000
+    _arm_after_ns_override = None if arm_after_ms is None else arm_after_ms * 1_000_000
+    _idle_interval_s_override = None if idle_interval_ms is None else idle_interval_ms / 1000
     _max_samples_per_slice = max_samples_per_slice
     _trace_depth = trace_depth
 
@@ -116,12 +119,36 @@ def start_cpu_sampling(
         os.register_at_fork(after_in_child=_reinit_after_fork)
 
     _sampler_started = True
-    logger.info("CPU stack sampling started (interval=%sms, arm_after=%sms)", interval_ms, arm_after_ms)
+    logger.info(
+        "CPU stack sampling started (interval=%sms, arm_after=%s)",
+        interval_ms,
+        f"{arm_after_ms}ms" if arm_after_ms is not None else "threshold/2",
+    )
 
 
 def is_cpu_sampling_started() -> bool:
     """Return whether the CPU sampling watchdog has been started."""
     return _sampler_started
+
+
+def _effective_arm_and_idle() -> tuple[int, float]:
+    """Effective (arm_after_ns, idle_interval_s), derived where not overridden.
+
+    Derived values are computed from the current slow-task threshold at read
+    time, so they always follow whatever detect_slow_tasks() last configured.
+    The import is function-local because slow_tasks imports this module.
+    """
+    arm_after_ns = _arm_after_ns_override
+    if arm_after_ns is None:
+        from aiocop.core.slow_tasks import _slow_task_threshold_ns
+
+        arm_after_ns = max(1_000_000, _slow_task_threshold_ns // 2)
+
+    idle_interval_s = _idle_interval_s_override
+    if idle_interval_s is None:
+        idle_interval_s = min(0.050, arm_after_ns / 1_000_000_000)
+
+    return arm_after_ns, idle_interval_s
 
 
 def _reinit_after_fork() -> None:
@@ -183,19 +210,21 @@ def _slice_finished(slice_id: int) -> list[list[tuple[str, int, str]]]:
 def _watchdog_loop() -> None:
     global _samples_slice_id
 
-    sleep_s = _idle_interval_s
+    arm_after_ns, idle_interval_s = _effective_arm_and_idle()
+    sleep_s = idle_interval_s
 
     while True:
         time.sleep(sleep_s)
+        arm_after_ns, idle_interval_s = _effective_arm_and_idle()
 
         slice_id = _current_slice_id
         if slice_id == 0:
-            sleep_s = _idle_interval_s
+            sleep_s = idle_interval_s
             continue
 
         sleep_s = _interval_s
 
-        if (time.perf_counter_ns() - slice_id) < _arm_after_ns:
+        if (time.perf_counter_ns() - slice_id) < arm_after_ns:
             continue
 
         stack = _capture_thread_stack(_current_slice_thread_id)

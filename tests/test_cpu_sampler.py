@@ -264,10 +264,96 @@ class TestDefaultOn:
             from aiocop.core import cpu_sampler
 
             aiocop.detect_slow_tasks(threshold_ms=100)
-            print(f"started={aiocop.is_cpu_sampling_started()} arm_ns={cpu_sampler._arm_after_ns}", flush=True)
+            arm_ns, idle_s = cpu_sampler._effective_arm_and_idle()
+            print(f"started={aiocop.is_cpu_sampling_started()} arm_ns={arm_ns} idle_s={idle_s}", flush=True)
             """
         )
-        assert "started=True arm_ns=50000000" in out
+        # idle follows the derived arm (min(50ms, arm)) so a fresh slice gets
+        # its first look no later than its arming age
+        assert "started=True arm_ns=50000000 idle_s=0.05" in out
+
+    def test_derived_idle_tracks_a_small_arm(self) -> None:
+        """threshold 30 -> arm 15ms -> idle 15ms, not the fixed 50ms that
+        would let just-over-threshold slices finish inside one idle sleep."""
+        out = self._run(
+            """
+            import aiocop
+            from aiocop.core import cpu_sampler
+
+            aiocop.detect_slow_tasks(threshold_ms=30)
+            arm_ns, idle_s = cpu_sampler._effective_arm_and_idle()
+            print(f"arm_ns={arm_ns} idle_s={idle_s}", flush=True)
+            """
+        )
+        assert "arm_ns=15000000 idle_s=0.015" in out
+
+    def test_pre_start_rederives_arm_when_detect_sets_the_threshold(self) -> None:
+        """Customizing only other knobs before detect_slow_tasks must not
+        freeze the arming delay against the module-default threshold."""
+        out = self._run(
+            """
+            import aiocop
+            from aiocop.core import cpu_sampler
+
+            aiocop.start_cpu_sampling(interval_ms=5)
+            aiocop.detect_slow_tasks(threshold_ms=100)
+            arm_ns, idle_s = cpu_sampler._effective_arm_and_idle()
+            print(f"arm_ns={arm_ns} idle_s={idle_s}", flush=True)
+            """
+        )
+        assert "arm_ns=50000000 idle_s=0.05" in out
+
+    def test_pre_start_rederives_arm_below_a_small_threshold(self) -> None:
+        """A threshold below the module default must pull the derived arm
+        under it — otherwise violations could never carry samples."""
+        out = self._run(
+            """
+            import aiocop
+            from aiocop.core import cpu_sampler
+
+            aiocop.start_cpu_sampling(interval_ms=5)
+            aiocop.detect_slow_tasks(threshold_ms=10)
+            print(f"arm_ns={cpu_sampler._effective_arm_and_idle()[0]}", flush=True)
+            """
+        )
+        assert "arm_ns=5000000" in out
+
+    def test_just_over_threshold_slice_is_sampled_with_default_pairing(self) -> None:
+        """End to end: with derived arm+idle a slice moderately over the
+        threshold gets samples even when the watchdog was idling before it."""
+        out = self._run(
+            """
+            import asyncio
+            import time
+
+            import aiocop
+
+            aiocop.patch_audit_functions()
+            aiocop.start_blocking_io_detection(trace_depth=5)
+            aiocop.detect_slow_tasks(threshold_ms=30)
+
+            events = []
+            aiocop.register_slow_task_callback(events.append)
+
+            def burn(duration_s):
+                deadline = time.perf_counter() + duration_s
+                while time.perf_counter() < deadline:
+                    sum(range(1000))
+
+            async def main():
+                aiocop.activate()
+                await asyncio.sleep(0.2)  # let the watchdog settle into idle cadence
+                burn(0.06)
+                await asyncio.sleep(0)
+
+            asyncio.run(main())
+
+            slow = [e for e in events if e.reason == "cpu_blocking" and e.exceeded_threshold]
+            sampled = any(e.cpu_stack_samples for e in slow)
+            print(f"violations={len(slow) > 0} sampled={sampled}", flush=True)
+            """
+        )
+        assert "violations=True sampled=True" in out
 
     def test_cpu_sampling_false_disables_the_auto_start(self) -> None:
         out = self._run(
@@ -288,7 +374,7 @@ class TestDefaultOn:
 
             aiocop.start_cpu_sampling(arm_after_ms=7)
             aiocop.detect_slow_tasks(threshold_ms=100)
-            print(f"arm_ns={cpu_sampler._arm_after_ns}", flush=True)
+            print(f"arm_ns={cpu_sampler._effective_arm_and_idle()[0]}", flush=True)
             """
         )
         assert "arm_ns=7000000" in out
