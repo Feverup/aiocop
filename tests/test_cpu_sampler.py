@@ -318,6 +318,23 @@ class TestDefaultOn:
         )
         assert "arm_ns=5000000" in out
 
+    def test_zero_arm_does_not_spin_the_watchdog(self) -> None:
+        """arm_after_ms=0 means "sample every slice immediately"; the derived
+        idle must floor at the sampling interval instead of becoming a
+        time.sleep(0) busy loop."""
+        out = self._run(
+            """
+            import aiocop
+            from aiocop.core import cpu_sampler
+
+            aiocop.start_cpu_sampling(arm_after_ms=0)
+            aiocop.detect_slow_tasks(threshold_ms=30)
+            arm_ns, idle_s = cpu_sampler._effective_arm_and_idle()
+            print(f"arm_ns={arm_ns} idle_s={idle_s}", flush=True)
+            """
+        )
+        assert "arm_ns=0 idle_s=0.01" in out
+
     def test_just_over_threshold_slice_is_sampled_with_default_pairing(self) -> None:
         """End to end: with derived arm+idle a slice moderately over the
         threshold gets samples even when the watchdog was idling before it."""

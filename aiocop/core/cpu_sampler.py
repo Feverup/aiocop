@@ -40,6 +40,9 @@ _AIOCOP_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))
 _sampler_started = False
 
 _interval_s: float = 0.010
+# The watchdog never sleeps less than this, whatever the configuration says.
+_MIN_SLEEP_S = 0.001
+
 # None means "derived": arm defaults to half the slow-task threshold and idle
 # to min(50ms, arm). Derived values are never stored — _effective_arm_and_idle
 # computes them from the live threshold on every watchdog wake-up, so the call
@@ -90,9 +93,12 @@ def start_cpu_sampling(
             the midpoint of any slice that goes on to violate.
         idle_interval_ms: Watchdog wake-up interval while no slice is running,
             trading idle CPU for sampling start latency. Defaults to
-            min(50ms, arm_after_ms) so the first look at a fresh slice happens
-            no later than its arming age; a fixed 50ms would let slices just
-            over the threshold finish unobserved inside one idle sleep.
+            min(50ms, max(arm_after_ms, interval_ms)) so the first look at a
+            fresh slice happens no later than its arming age — a fixed 50ms
+            would let slices just over the threshold finish unobserved inside
+            one idle sleep — while never waking more often when idle than
+            when sampling. The watchdog never sleeps under 1ms regardless of
+            configuration.
         max_samples_per_slice: Cap on samples kept per slice (default: 32).
         trace_depth: Number of stack frames captured per sample (default: 20).
     """
@@ -146,7 +152,10 @@ def _effective_arm_and_idle() -> tuple[int, float]:
 
     idle_interval_s = _idle_interval_s_override
     if idle_interval_s is None:
-        idle_interval_s = min(0.050, arm_after_ns / 1_000_000_000)
+        # Floored at the sampling interval: idle wake-ups finer than the
+        # sampling cadence buy nothing, and an explicit arm of 0 ("sample
+        # every slice immediately") must not turn the idle sleep into a spin.
+        idle_interval_s = min(0.050, max(arm_after_ns / 1_000_000_000, _interval_s))
 
     return arm_after_ns, idle_interval_s
 
@@ -214,7 +223,9 @@ def _watchdog_loop() -> None:
     sleep_s = idle_interval_s
 
     while True:
-        time.sleep(sleep_s)
+        # Last-resort guard: explicitly configured zeros (interval or idle)
+        # must never degrade the watchdog into a busy loop pinning a core.
+        time.sleep(max(sleep_s, _MIN_SLEEP_S))
         arm_after_ns, idle_interval_s = _effective_arm_and_idle()
 
         slice_id = _current_slice_id
