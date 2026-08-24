@@ -15,6 +15,7 @@ from dataclasses import replace
 from time import perf_counter_ns
 from typing import Any
 
+from aiocop.core import cpu_sampler
 from aiocop.core.blocking_io import format_blocking_event
 from aiocop.core.callbacks import _capture_context, _invoke_slow_task_callbacks
 from aiocop.core.severity import calculate_io_severity_score, get_severity_level_from_score
@@ -42,6 +43,7 @@ SlowTaskCallback = Callable[[SlowTaskEvent], None]
 def detect_slow_tasks(
     threshold_ms: int = 30,
     on_slow_task: SlowTaskCallback | None = None,
+    cpu_sampling: bool = True,
 ) -> None:
     """
     Configure slow task detection for the asyncio event loop.
@@ -61,6 +63,10 @@ def detect_slow_tasks(
         on_slow_task: Optional callback invoked when blocking IO is detected in a task.
                       The callback receives a SlowTaskEvent with exceeded_threshold indicating
                       if the threshold was exceeded.
+        cpu_sampling: Start CPU stack sampling so cpu_blocking events carry
+                      stack attribution (default: True). Sampling arms at half
+                      of threshold_ms; call start_cpu_sampling() before this
+                      function to customize, or pass False to disable.
 
     Should be called after start_blocking_io_detection().
     """
@@ -85,6 +91,9 @@ def detect_slow_tasks(
     register_on_activate_hook(_ensure_loop_patched)
 
     _ensure_loop_patched()
+
+    if cpu_sampling is True and cpu_sampler.is_cpu_sampling_started() is False:
+        cpu_sampler.start_cpu_sampling()
 
 
 def _ensure_loop_patched() -> bool:
@@ -182,6 +191,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
         pre_context = _capture_context()
 
         t0 = perf_counter_ns()
+        cpu_sampler._slice_started(t0)
 
         try:
             if args:
@@ -190,6 +200,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                 return_value = callback()
         finally:
             thread_local.blocking_events = previous_events
+            raw_cpu_samples = cpu_sampler._slice_finished(t0)
 
         post_context = _capture_context()
         captured_context = {**pre_context, **{k: v for k, v in post_context.items() if v is not None}}
@@ -219,6 +230,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     severity_level=severity_level,
                     reason="io_blocking",
                     blocking_events=formatted_events,
+                    cpu_stack_samples=cpu_sampler.format_cpu_samples(raw_cpu_samples),
                 )
 
                 _invoke_callbacks_with_context(
@@ -237,6 +249,7 @@ def _make_monitored_callback(callback: Callable[..., Any], args: tuple[Any, ...]
                     severity_level="low",
                     reason="cpu_blocking",
                     blocking_events=[],
+                    cpu_stack_samples=cpu_sampler.format_cpu_samples(raw_cpu_samples),
                 )
 
                 _invoke_callbacks_with_context(slow_task_event, captured_context)

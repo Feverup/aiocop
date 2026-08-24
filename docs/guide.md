@@ -6,6 +6,7 @@ This guide covers all aiocop features in detail.
 
 - [How aiocop Works](#how-aiocop-works)
 - [Setup Functions](#setup-functions)
+- [CPU Stack Sampling](#cpu-stack-sampling)
 - [Callbacks](#callbacks)
 - [Severity Scoring](#severity-scoring)
 - [Dynamic Controls](#dynamic-controls)
@@ -81,6 +82,7 @@ aiocop.detect_slow_tasks(
 **Parameters:**
 - `threshold_ms` (int, default=30): Tasks taking longer than this trigger callbacks with `exceeded_threshold=True`.
 - `on_slow_task` (callable, optional): Callback to invoke when events are detected.
+- `cpu_sampling` (bool, default=True): Also start [CPU stack sampling](#cpu-stack-sampling).
 
 ### activate() / deactivate()
 
@@ -97,6 +99,41 @@ aiocop.deactivate()
 if aiocop.is_monitoring_active():
     print("Monitoring is running")
 ```
+
+## CPU Stack Sampling
+
+Blocking I/O events carry stacks captured by the audit hook, but a `cpu_blocking` slice never fires an auditable call — historically those events had no attribution. CPU stack sampling closes the gap: a watchdog daemon thread samples the stack of the thread running the slice once it has been running longer than an arming delay, and the aggregated samples arrive on the event as `cpu_stack_samples` (unique stacks with occurrence counts, hottest first).
+
+It is **on by default**: `detect_slow_tasks()` starts it unless called with `cpu_sampling=False`.
+
+### Defaults and derivation
+
+- `arm_after_ms` defaults to **half the slow-task threshold** and follows it if `detect_slow_tasks()` (re)configures the threshold later — so a slice that reaches the threshold has been under sampling since roughly its midpoint.
+- `idle_interval_ms` defaults to `min(50, max(arm_after_ms, interval_ms))` so a fresh slice gets its first look no later than its arming age.
+- Explicitly passed values are never overridden. To customize, call `start_cpu_sampling(...)` **before** `detect_slow_tasks()`:
+
+```python
+aiocop.start_cpu_sampling(interval_ms=5, arm_after_ms=10)
+aiocop.detect_slow_tasks(threshold_ms=30)  # auto-start steps aside
+```
+
+### Consuming samples
+
+```python
+def on_slow_task(event: aiocop.SlowTaskEvent) -> None:
+    if event.reason == "cpu_blocking" and event.exceeded_threshold:
+        for sample in event.cpu_stack_samples[:3]:
+            print(f"{sample['count']}x {sample['trace']}")
+```
+
+For a slice of ~80ms at the default 10ms interval you get ~6-8 samples; the stack appearing in most of them is where the CPU went. Individual slices are noisy — aggregate across many events (e.g. in your APM) for reliable attribution.
+
+### Operational notes
+
+- **Overhead**: two module-global stores per monitored callback on the hot path; the idle watchdog costs well under 1% of a core. Stack capture happens only for slices that are already frozen.
+- **Any thread**: the watchdog samples the thread that published the slice, so loops running outside the main thread are attributed correctly.
+- **Fork-safe**: children re-spawn the watchdog via `os.register_at_fork`, so gunicorn `--preload` workers keep sampling.
+- **GIL limitation**: a single C call that never releases the GIL starves the watchdog; a long slice with very few samples is itself a signal that one C-level call dominated it.
 
 ## Callbacks
 

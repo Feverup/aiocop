@@ -39,6 +39,7 @@ Registers the audit hook to capture blocking I/O events.
 aiocop.detect_slow_tasks(
     threshold_ms: int = 30,
     on_slow_task: Callable[[SlowTaskEvent], None] | None = None,
+    cpu_sampling: bool = True,
 ) -> None
 ```
 
@@ -47,10 +48,50 @@ Patches the event loop to detect slow tasks. Works with both standard asyncio an
 **Parameters:**
 - `threshold_ms`: Threshold in milliseconds. Tasks exceeding this have `exceeded_threshold=True`. Default: 30.
 - `on_slow_task`: Optional callback invoked when blocking I/O is detected. Can also use `register_slow_task_callback()`.
+- `cpu_sampling`: Start CPU stack sampling so `cpu_blocking` events carry stack attribution. Default: True. See `start_cpu_sampling()`.
 
 **Should be called after** `start_blocking_io_detection()`.
 
 **Note:** Can only be called once per process. Subsequent calls log a warning and return.
+
+---
+
+### start_cpu_sampling
+
+```python
+aiocop.start_cpu_sampling(
+    interval_ms: int = 10,
+    arm_after_ms: int | None = None,
+    idle_interval_ms: int | None = None,
+    max_samples_per_slice: int = 32,
+    trace_depth: int = 20,
+) -> None
+```
+
+Starts the CPU stack sampling watchdog: a daemon thread that samples the loop thread's stack while a monitored callback has been running longer than the arming delay, attaching the aggregated samples to `SlowTaskEvent.cpu_stack_samples`.
+
+Started automatically by `detect_slow_tasks()` (unless `cpu_sampling=False`); call it explicitly **before** `detect_slow_tasks()` only to customize the parameters.
+
+**Parameters:**
+- `interval_ms`: Sampling interval while a slice is running. Default: 10.
+- `arm_after_ms`: Minimum slice age before sampling starts; shorter slices are never sampled. Default: derived as half the slow-task threshold, following later threshold changes.
+- `idle_interval_ms`: Watchdog wake-up interval while no slice is running. Default: derived as `min(50, max(arm_after_ms, interval_ms))`. The watchdog never sleeps under 1ms regardless of configuration.
+- `max_samples_per_slice`: Cap on samples kept per slice. Default: 32.
+- `trace_depth`: Stack frames captured per sample. Default: 20.
+
+Survives `fork()`: children (e.g. gunicorn `--preload` workers) restart the watchdog automatically.
+
+**Note:** Can only be called once per process. Subsequent calls log a warning and return.
+
+---
+
+### is_cpu_sampling_started
+
+```python
+aiocop.is_cpu_sampling_started() -> bool
+```
+
+Returns whether the CPU sampling watchdog has been started.
 
 ---
 

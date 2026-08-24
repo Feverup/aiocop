@@ -17,6 +17,10 @@ Basic Usage:
         if event.exceeded_threshold:
             print(f"Slow task: {event.elapsed_ms}ms, severity: {event.severity_level}")
 
+    # Also starts CPU stack sampling (cpu_sampling=True by default), so
+    # cpu_blocking events carry stack attribution like IO events do. To
+    # customize sampling, call aiocop.start_cpu_sampling(...) BEFORE this;
+    # to disable it, pass cpu_sampling=False.
     aiocop.detect_slow_tasks(threshold_ms=30, on_slow_task=my_callback)
 
     # 4. Activate monitoring when ready (e.g., after startup)
@@ -71,6 +75,8 @@ SlowTaskEvent Fields:
     - reason: str - Why the task was flagged ("io_blocking" or "cpu_blocking")
     - blocking_events: list[BlockingEventInfo] - Details of each blocking operation
     - context: dict[str, Any] - Custom context from registered context providers
+    - cpu_stack_samples: list[CpuStackSample] - Aggregated main-thread stack samples
+      captured during the slice (empty unless start_cpu_sampling() was called)
 
 Severity Levels:
     aiocop calculates severity based on the type and number of blocking operations:
@@ -108,6 +114,7 @@ from aiocop.core.callbacks import (
     unregister_context_provider,
     unregister_slow_task_callback,
 )
+from aiocop.core.cpu_sampler import is_cpu_sampling_started, start_cpu_sampling
 from aiocop.core.severity import calculate_io_severity_score, get_severity_level_from_score
 from aiocop.core.slow_tasks import SlowTaskCallback, detect_slow_tasks, get_slow_task_threshold_ms
 from aiocop.core.state import (
@@ -122,7 +129,7 @@ from aiocop.core.state import (
     raise_on_violations_context as raise_on_violations,
 )
 from aiocop.exceptions import HighSeverityBlockingIoException
-from aiocop.types.events import BlockingEventInfo, RawBlockingEvent, SlowTaskEvent
+from aiocop.types.events import BlockingEventInfo, CpuStackSample, RawBlockingEvent, SlowTaskEvent
 from aiocop.types.severity import (
     THRESHOLD_HIGH,
     THRESHOLD_LOW,
@@ -139,6 +146,8 @@ __all__ = [
     "patch_audit_functions",
     "start_blocking_io_detection",
     "detect_slow_tasks",
+    "start_cpu_sampling",
+    "is_cpu_sampling_started",
     # Activation controls
     "activate",
     "deactivate",
@@ -167,6 +176,7 @@ __all__ = [
     "get_severity_level_from_score",
     # Types
     "BlockingEventInfo",
+    "CpuStackSample",
     "RawBlockingEvent",
     "SlowTaskEvent",
     "SlowTaskCallback",

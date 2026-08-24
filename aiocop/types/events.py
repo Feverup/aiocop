@@ -23,6 +23,14 @@ class BlockingEventInfo(TypedDict):
     severity: int | None
 
 
+class CpuStackSample(TypedDict):
+    """Aggregated stack sample captured during a CPU-bound slice."""
+
+    trace: str
+    entry_point: str
+    count: int
+
+
 @dataclass(frozen=True)
 class SlowTaskEvent:
     """Event emitted when a slow task is detected."""
@@ -35,3 +43,4 @@ class SlowTaskEvent:
     reason: str
     blocking_events: list[BlockingEventInfo]
     context: dict[str, Any] = field(default_factory=dict)
+    cpu_stack_samples: list[CpuStackSample] = field(default_factory=list)

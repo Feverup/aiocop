@@ -220,24 +220,29 @@ def format_blocking_event(raw_event: RawBlockingEvent) -> BlockingEventInfo:
 
     event_str = f"{raw_event['event_name']}({formatted_args})"
 
-    formatted_frames = []
-    for filename, lineno, func_name in raw_event["raw_stack"]:
-        short_path = filename
-        if "/src/" in filename:
-            short_path = filename.split("/src/", 1)[1]
-        elif "/site-packages/" in filename:
-            short_path = filename.split("/site-packages/", 1)[1]
-        elif "/lib/python" in filename:
-            path_parts = filename.split("/")
-            if len(path_parts) > 0:
-                short_path = path_parts[-1]
-
-        formatted_frames.append(f"{short_path}:{lineno}:{func_name}")
+    formatted_frames = [format_stack_frame(frame) for frame in raw_event["raw_stack"]]
 
     trace_str = " <- ".join(formatted_frames)
     entry_point = formatted_frames[0] if len(formatted_frames) > 0 else "unknown"
 
     return {"event": event_str, "trace": trace_str, "entry_point": entry_point, "severity": raw_event["severity"]}
+
+
+def format_stack_frame(frame: tuple[str, int, str]) -> str:
+    """Format a raw (filename, lineno, func_name) frame with a shortened path."""
+    filename, lineno, func_name = frame
+
+    short_path = filename
+    if "/src/" in filename:
+        short_path = filename.split("/src/", 1)[1]
+    elif "/site-packages/" in filename:
+        short_path = filename.split("/site-packages/", 1)[1]
+    elif "/lib/python" in filename:
+        path_parts = filename.split("/")
+        if len(path_parts) > 0:
+            short_path = path_parts[-1]
+
+    return f"{short_path}:{lineno}:{func_name}"
 
 
 def get_blocking_events_dict() -> dict[str, int]:
