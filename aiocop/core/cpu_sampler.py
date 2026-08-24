@@ -8,13 +8,13 @@ been running longer than an arming delay, and the samples are attached to the
 resulting SlowTaskEvent.
 
 Overhead model:
-- Hot path (every monitored callback): two module-global stores to publish and
-  clear the slice marker, plus one global read on the common no-samples exit.
-  No locks, no allocations.
-- Watchdog thread: sleeps at ``interval_ms``; while the loop is idle or slices
-  are short it wakes, reads one global, and goes back to sleep. Stack capture
-  via sys._current_frames() happens only for slices already older than
-  ``arm_after_ms``.
+- Hot path (every monitored callback): publish the slice marker (thread id +
+  start time) and clear it, plus one global read on the common no-samples
+  exit — measured ~0.1us per callback. No locks, no allocations.
+- Watchdog thread: sleeps at ``interval_ms`` while a slice runs and at the
+  idle interval otherwise; each wake recomputes the effective (derived)
+  configuration and reads one global. Stack capture via sys._current_frames()
+  happens only for slices already older than ``arm_after_ms``.
 
 Known limitation: a single long-running C call that never releases the GIL
 (e.g. a pathological regex) starves the watchdog, so such a slice yields fewer

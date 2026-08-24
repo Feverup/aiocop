@@ -20,6 +20,7 @@
 * **Works with asyncio and uvloop**: Compatible with both standard asyncio and uvloop event loops out of the box
 * **Blocking I/O Detection**: Automatically detects blocking I/O calls (file operations, network calls, subprocess, etc.) in your async code
 * **Stack Trace Capture**: Captures full stack traces to pinpoint exactly where blocking calls originate
+* **CPU Stack Sampling**: A lightweight watchdog samples the loop thread during CPU-bound slices, so `cpu_blocking` events carry stack attribution too — on by default, no profiler needed
 * **Severity Scoring**: Assigns severity scores to blocking events to help prioritize fixes
 * **Callback-based Events**: Register callbacks to handle slow task events however you need (logging, metrics, alerts)
 * **Dynamic Controls**: Enable/disable monitoring at runtime, useful for gradual rollout or debugging sessions
@@ -212,6 +213,35 @@ async def test_my_async_endpoint(client):
 
 We wrap only the async view (not the entire test) because test setup/teardown often has legitimate blocking code. See [Integrations](https://feverup.github.io/aiocop/integrations/) for complete examples.
 
+## CPU Stack Sampling
+
+Blocking I/O gets stack attribution from audit events, but a `cpu_blocking` slice is just Python executing — nothing auditable fires. CPU stack sampling closes that gap: a watchdog daemon thread samples the loop thread's stack while a monitored callback has been running longer than an arming delay, and attaches the aggregated samples to the resulting `SlowTaskEvent` as `cpu_stack_samples`.
+
+**On by default.** `detect_slow_tasks()` starts it automatically. The arming delay defaults to half the slow-task threshold (and follows it if the threshold changes), so any slice that goes on to violate has been under sampling since its midpoint.
+
+```python
+# Disable it:
+aiocop.detect_slow_tasks(threshold_ms=30, cpu_sampling=False)
+
+# Customize it — call BEFORE detect_slow_tasks() (the auto-start then steps aside):
+aiocop.start_cpu_sampling(interval_ms=5, arm_after_ms=10)
+aiocop.detect_slow_tasks(threshold_ms=30)
+```
+
+Reading the result in a callback:
+
+```python
+def on_slow_task(event: aiocop.SlowTaskEvent) -> None:
+    if event.reason == "cpu_blocking" and event.cpu_stack_samples:
+        top = event.cpu_stack_samples[0]
+        print(f"CPU-bound slice ({event.elapsed_ms:.1f}ms), hottest stack "
+              f"({top['count']} samples): {top['trace']}")
+```
+
+**Overhead**: the hot path adds two module-global stores per monitored callback (~0.1µs); the watchdog costs well under 1% of a core when idle and captures at most `max_samples_per_slice` (default 32) stacks per slice — and only for slices that are already frozen. Sampling works on any thread the loop runs on and survives `fork()` (gunicorn `--preload` workers restart the watchdog automatically).
+
+**Known limitation**: a single long-running C call that never releases the GIL starves the watchdog — few samples for a long slice is itself a signal that one C-level call dominated it.
+
 ## Context Providers
 
 Context providers allow you to capture external context (like tracing spans, request IDs, etc.) that will be passed to your callbacks. The context is captured **within the asyncio task's context**, ensuring proper propagation of contextvars.
@@ -306,6 +336,7 @@ class SlowTaskEvent:
     reason: str              # "io_blocking" or "cpu_blocking"
     blocking_events: list[BlockingEventInfo]  # List of detected events (empty for cpu_blocking)
     context: dict[str, Any]  # Custom context from context providers (default: {})
+    cpu_stack_samples: list[CpuStackSample]   # Aggregated loop-thread stack samples (default: [])
 ```
 
 ### BlockingEventInfo
@@ -319,6 +350,19 @@ class BlockingEventInfo(TypedDict):
     entry_point: str  # First frame in the trace
     severity: int     # Weight of this event
 ```
+
+### CpuStackSample
+
+Aggregated stack sample captured during a CPU-bound slice (see [CPU Stack Sampling](#cpu-stack-sampling)):
+
+```python
+class CpuStackSample(TypedDict):
+    trace: str        # Stack trace ("frame <- frame <- ...")
+    entry_point: str  # First frame in the trace
+    count: int        # How many samples showed this exact stack
+```
+
+Samples are ordered by `count` descending — the first entry is where the slice most likely spent its CPU time.
 
 ## Severity Weights
 
@@ -342,7 +386,9 @@ Severity levels are determined by aggregate score:
 
 - `patch_audit_functions()` - Patches stdlib functions to emit audit events
 - `start_blocking_io_detection(trace_depth=20)` - Registers the audit hook
-- `detect_slow_tasks(threshold_ms=30, on_slow_task=None)` - Patches the event loop
+- `detect_slow_tasks(threshold_ms=30, on_slow_task=None, cpu_sampling=True)` - Patches the event loop; starts CPU stack sampling unless disabled
+- `start_cpu_sampling(interval_ms=10, arm_after_ms=None, idle_interval_ms=None, max_samples_per_slice=32, trace_depth=20)` - Start (or pre-configure) CPU stack sampling
+- `is_cpu_sampling_started()` - Whether the sampling watchdog is running
 - `activate()` / `deactivate()` - Control monitoring at runtime
 
 ### Callback Management

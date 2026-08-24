@@ -48,6 +48,7 @@ aiocop.activate()
 - **asyncio & uvloop**: Works with both standard asyncio and uvloop out of the box
 - **Blocking I/O Detection**: Detects file operations, network calls, subprocess, `time.sleep`, and more
 - **Stack Trace Capture**: Full stack traces to pinpoint blocking calls
+- **CPU Stack Sampling**: Watchdog-sampled stacks attribute CPU-bound slices too (on by default)
 - **Severity Scoring**: Prioritize fixes based on impact
 - **Callback System**: Handle events however you need (logging, metrics, alerts)
 - **Dynamic Controls**: Enable/disable monitoring at runtime
