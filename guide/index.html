@@ -1,0 +1,2354 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Non-intrusive monitoring for Python asyncio. Detects, pinpoints, and logs blocking IO and CPU calls that freeze your event loop.">
+      
+      
+        <meta name="author" content="Fever Labs, Inc.">
+      
+      
+        <link rel="canonical" href="https://feverup.github.io/aiocop/guide/">
+      
+      
+        <link rel="prev" href="../quickstart/">
+      
+      
+        <link rel="next" href="../api/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../images/aiocop_logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>User Guide - aiocop</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="aiocop" class="md-header__button md-logo" aria-label="aiocop" data-md-component="logo">
+      
+  <img src="../images/aiocop_logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            aiocop
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              User Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/feverup/aiocop" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    feverup/aiocop
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="aiocop" class="md-nav__button md-logo" aria-label="aiocop" data-md-component="logo">
+      
+  <img src="../images/aiocop_logo.png" alt="logo">
+
+    </a>
+    aiocop
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/feverup/aiocop" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    feverup/aiocop
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-aiocop-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How aiocop Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patch_audit_functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        patch_audit_functions()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start_blocking_io_detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start_blocking_io_detection()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect_slow_tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        detect_slow_tasks()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activate-deactivate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        activate() / deactivate()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cpu-stack-sampling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CPU Stack Sampling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CPU Stack Sampling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defaults-and-derivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults and derivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consuming-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consuming samples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operational-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operational notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callbacks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Callbacks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registering-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managing-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#callback-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callback Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#severity-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity Scoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Severity Scoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#severity-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity Weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#severity-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity Levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-severity-in-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Severity in Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-severity-calculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Severity Calculation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Controls
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic Controls">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runtime-enabledisable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Enable/Disable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-based-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment-Based Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context Providers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context Providers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-context-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Context Providers?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple Providers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managing-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Providers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raise-on-violations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raise on Violations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Raise on Violations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Enable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Exception
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#event-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Event Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#slowtaskevent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SlowTaskEvent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-callbacks-are-invoked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When Callbacks Are Invoked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blockingeventinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BlockingEventInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitored-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitored Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitored Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#network-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#process-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-full-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Get Full List
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extending-aiocop-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extending aiocop (Advanced)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extending aiocop (Advanced)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-custom-audit-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Custom Audit Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-custom-functions-to-patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Custom Functions to Patch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-monitoring-a-custom-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Monitoring a Custom Library
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../benchmarks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-aiocop-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How aiocop Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patch_audit_functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        patch_audit_functions()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start_blocking_io_detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start_blocking_io_detection()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect_slow_tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        detect_slow_tasks()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activate-deactivate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        activate() / deactivate()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cpu-stack-sampling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CPU Stack Sampling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CPU Stack Sampling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defaults-and-derivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults and derivation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consuming-samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consuming samples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operational-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operational notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callbacks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Callbacks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registering-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managing-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#callback-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callback Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#severity-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity Scoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Severity Scoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#severity-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity Weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#severity-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Severity Levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-severity-in-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Severity in Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-severity-calculation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Severity Calculation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dynamic-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic Controls
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic Controls">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runtime-enabledisable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Enable/Disable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-based-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment-Based Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context Providers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context Providers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-context-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Context Providers?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple Providers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managing-providers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Providers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raise-on-violations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raise on Violations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Raise on Violations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-enable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Enable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#context-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context Manager
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Exception
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#event-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Event Types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Event Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#slowtaskevent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SlowTaskEvent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-callbacks-are-invoked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When Callbacks Are Invoked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blockingeventinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BlockingEventInfo
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitored-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitored Operations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitored Operations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#network-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#process-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Process Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get-full-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Get Full List
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extending-aiocop-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extending aiocop (Advanced)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extending aiocop (Advanced)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-custom-audit-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Custom Audit Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-custom-functions-to-patch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Custom Functions to Patch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#important-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Important Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-monitoring-a-custom-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Monitoring a Custom Library
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/feverup/aiocop/edit/master/docs/guide.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="user-guide">User Guide<a class="headerlink" href="#user-guide" title="Permanent link">&para;</a></h1>
+<p>This guide covers all aiocop features in detail.</p>
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#how-aiocop-works">How aiocop Works</a></li>
+<li><a href="#setup-functions">Setup Functions</a></li>
+<li><a href="#cpu-stack-sampling">CPU Stack Sampling</a></li>
+<li><a href="#callbacks">Callbacks</a></li>
+<li><a href="#severity-scoring">Severity Scoring</a></li>
+<li><a href="#dynamic-controls">Dynamic Controls</a></li>
+<li><a href="#context-providers">Context Providers</a></li>
+<li><a href="#raise-on-violations">Raise on Violations</a></li>
+<li><a href="#event-types">Event Types</a></li>
+<li><a href="#monitored-operations">Monitored Operations</a></li>
+<li><a href="#extending-aiocop-advanced">Extending aiocop (Advanced)</a></li>
+</ul>
+<h2 id="how-aiocop-works">How aiocop Works<a class="headerlink" href="#how-aiocop-works" title="Permanent link">&para;</a></h2>
+<p>aiocop uses three mechanisms to detect blocking I/O:</p>
+<ol>
+<li>
+<p><strong>Audit Hook Patching</strong> (<code>patch_audit_functions</code>): Wraps stdlib functions that don't emit native audit events (like socket operations, or <code>time.sleep</code> on Python &lt; 3.13) to emit custom audit events.</p>
+</li>
+<li>
+<p><strong>Audit Hook Registration</strong> (<code>start_blocking_io_detection</code>): Registers a <code>sys.audit</code> hook that listens for blocking I/O events and captures stack traces.</p>
+</li>
+<li>
+<p><strong>Event Loop Patching</strong> (<code>detect_slow_tasks</code>): Patches the event loop's scheduling methods (<code>call_soon</code>, <code>call_later</code>, <code>call_at</code>) to measure task execution time and invoke callbacks when blocking is detected. This approach works with both standard asyncio and uvloop.</p>
+</li>
+</ol>
+<p><img alt="aiocop architecture diagram" src="../images/explanation_diagram.png" /></p>
+<p>The diagram above shows the complete flow:</p>
+<ol>
+<li>The <strong>Event Loop</strong> schedules a callback via <code>call_soon</code> (or similar)</li>
+<li><strong>aiocop's wrapper</strong> intercepts the callback, starts a timer and creates an events list</li>
+<li>Your <strong>task code</strong> executes</li>
+<li>When a blocking function (like <code>open()</code>) is called, the <strong>Python VM</strong> (for native functions) or <strong>aiocop's wrapper</strong> (for patched functions) emits a <code>sys.audit</code> event</li>
+<li>The <strong>audit hook</strong> captures the event and stack trace, appending it to the events list</li>
+<li>After the task completes, aiocop calculates severity and invokes callbacks with the full <code>SlowTaskEvent</code></li>
+</ol>
+<h2 id="setup-functions">Setup Functions<a class="headerlink" href="#setup-functions" title="Permanent link">&para;</a></h2>
+<h3 id="patch_audit_functions">patch_audit_functions()<a class="headerlink" href="#patch_audit_functions" title="Permanent link">&para;</a></h3>
+<p>Patches Python stdlib functions to emit audit events. <strong>Must be called first.</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">patch_audit_functions</span><span class="p">()</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Check what was patched</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">patched</span> <span class="o">=</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">get_patched_functions</span><span class="p">()</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Patched </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">patched</span><span class="p">)</span><span class="si">}</span><span class="s2"> functions: </span><span class="si">{</span><span class="n">patched</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">..."</span><span class="p">)</span>
+</code></pre></div>
+<p>Functions patched include:
+- <code>time.sleep</code> (Python &lt; 3.13 only - it gained its own native audit event in 3.13)
+- <code>socket.socket.connect</code>, <code>send</code>, <code>recv</code>, etc.
+- <code>ssl.SSLSocket.read</code>, <code>write</code>, etc.
+- <code>os.stat</code>, <code>os.access</code>, etc.</p>
+<h3 id="start_blocking_io_detection">start_blocking_io_detection()<a class="headerlink" href="#start_blocking_io_detection" title="Permanent link">&para;</a></h3>
+<p>Registers the audit hook to capture blocking I/O events.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">start_blocking_io_detection</span><span class="p">(</span><span class="n">trace_depth</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>trace_depth</code> (int, default=20): Number of stack frames to capture per event.</p>
+<h3 id="detect_slow_tasks">detect_slow_tasks()<a class="headerlink" href="#detect_slow_tasks" title="Permanent link">&para;</a></h3>
+<p>Patches the event loop to detect slow tasks and invoke callbacks.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">detect_slow_tasks</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">threshold_ms</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">on_slow_task</span><span class="o">=</span><span class="n">my_callback</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="p">)</span>
+</code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>threshold_ms</code> (int, default=30): Tasks taking longer than this trigger callbacks with <code>exceeded_threshold=True</code>.
+- <code>on_slow_task</code> (callable, optional): Callback to invoke when events are detected.
+- <code>cpu_sampling</code> (bool, default=True): Also start <a href="#cpu-stack-sampling">CPU stack sampling</a>.</p>
+<h3 id="activate-deactivate">activate() / deactivate()<a class="headerlink" href="#activate-deactivate" title="Permanent link">&para;</a></h3>
+<p>Control monitoring at runtime.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Start monitoring</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Pause monitoring (hooks remain registered but events are ignored)</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Check status</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="k">if</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">is_monitoring_active</span><span class="p">():</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"Monitoring is running"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="cpu-stack-sampling">CPU Stack Sampling<a class="headerlink" href="#cpu-stack-sampling" title="Permanent link">&para;</a></h2>
+<p>Blocking I/O events carry stacks captured by the audit hook, but a <code>cpu_blocking</code> slice never fires an auditable call — historically those events had no attribution. CPU stack sampling closes the gap: a watchdog daemon thread samples the stack of the thread running the slice once it has been running longer than an arming delay, and the aggregated samples arrive on the event as <code>cpu_stack_samples</code> (unique stacks with occurrence counts, hottest first).</p>
+<p>It is <strong>on by default</strong>: <code>detect_slow_tasks()</code> starts it unless called with <code>cpu_sampling=False</code>.</p>
+<h3 id="defaults-and-derivation">Defaults and derivation<a class="headerlink" href="#defaults-and-derivation" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>arm_after_ms</code> defaults to <strong>half the slow-task threshold</strong> and follows it if <code>detect_slow_tasks()</code> (re)configures the threshold later — so a slice that reaches the threshold has been under sampling since roughly its midpoint.</li>
+<li><code>idle_interval_ms</code> defaults to <code>min(50, max(arm_after_ms, interval_ms))</code> so a fresh slice gets its first look no later than its arming age.</li>
+<li>Explicitly passed values are never overridden. To customize, call <code>start_cpu_sampling(...)</code> <strong>before</strong> <code>detect_slow_tasks()</code>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">start_cpu_sampling</span><span class="p">(</span><span class="n">interval_ms</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">arm_after_ms</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">detect_slow_tasks</span><span class="p">(</span><span class="n">threshold_ms</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>  <span class="c1"># auto-start steps aside</span>
+</code></pre></div>
+<h3 id="consuming-samples">Consuming samples<a class="headerlink" href="#consuming-samples" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">on_slow_task</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">SlowTaskEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">reason</span> <span class="o">==</span> <span class="s2">"cpu_blocking"</span> <span class="ow">and</span> <span class="n">event</span><span class="o">.</span><span class="n">exceeded_threshold</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">cpu_stack_samples</span><span class="p">[:</span><span class="mi">3</span><span class="p">]:</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">sample</span><span class="p">[</span><span class="s1">'count'</span><span class="p">]</span><span class="si">}</span><span class="s2">x </span><span class="si">{</span><span class="n">sample</span><span class="p">[</span><span class="s1">'trace'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<p>For a slice of ~80ms at the default 10ms interval you get ~6-8 samples; the stack appearing in most of them is where the CPU went. Individual slices are noisy — aggregate across many events (e.g. in your APM) for reliable attribution.</p>
+<h3 id="operational-notes">Operational notes<a class="headerlink" href="#operational-notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Overhead</strong>: two module-global stores per monitored callback on the hot path; the idle watchdog costs well under 1% of a core. Stack capture happens only for slices that are already frozen.</li>
+<li><strong>Any thread</strong>: the watchdog samples the thread that published the slice, so loops running outside the main thread are attributed correctly.</li>
+<li><strong>Fork-safe</strong>: children re-spawn the watchdog via <code>os.register_at_fork</code>, so gunicorn <code>--preload</code> workers keep sampling.</li>
+<li><strong>GIL limitation</strong>: a single C call that never releases the GIL starves the watchdog; a long slice with very few samples is itself a signal that one C-level call dominated it.</li>
+</ul>
+<h2 id="callbacks">Callbacks<a class="headerlink" href="#callbacks" title="Permanent link">&para;</a></h2>
+<p>Callbacks are invoked when blocking I/O is detected or when a task exceeds the threshold.</p>
+<h3 id="registering-callbacks">Registering Callbacks<a class="headerlink" href="#registering-callbacks" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_callback</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">SlowTaskEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Event: </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">reason</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">event</span><span class="o">.</span><span class="n">elapsed_ms</span><span class="si">}</span><span class="s2">ms"</span><span class="p">)</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Register via detect_slow_tasks</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">detect_slow_tasks</span><span class="p">(</span><span class="n">threshold_ms</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">on_slow_task</span><span class="o">=</span><span class="n">my_callback</span><span class="p">)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Or register separately</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">register_slow_task_callback</span><span class="p">(</span><span class="n">my_callback</span><span class="p">)</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="c1"># Register multiple callbacks</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">register_slow_task_callback</span><span class="p">(</span><span class="n">log_callback</span><span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">register_slow_task_callback</span><span class="p">(</span><span class="n">metrics_callback</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="managing-callbacks">Managing Callbacks<a class="headerlink" href="#managing-callbacks" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Remove a specific callback</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">unregister_slow_task_callback</span><span class="p">(</span><span class="n">my_callback</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Remove all callbacks</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">clear_slow_task_callbacks</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="callback-best-practices">Callback Best Practices<a class="headerlink" href="#callback-best-practices" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Keep callbacks fast</strong>: They run in the event loop thread.</li>
+<li><strong>Don't do blocking I/O in callbacks</strong>: This would defeat the purpose!</li>
+<li><strong>Handle exceptions</strong>: aiocop catches callback exceptions, but it's good practice to handle them yourself.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">safe_callback</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">SlowTaskEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        <span class="c1"># Your logic here</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        <span class="n">send_to_metrics</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Callback error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="severity-scoring">Severity Scoring<a class="headerlink" href="#severity-scoring" title="Permanent link">&para;</a></h2>
+<p>aiocop assigns severity scores based on the type and impact of blocking operations.</p>
+<h3 id="severity-weights">Severity Weights<a class="headerlink" href="#severity-weights" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Description</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WEIGHT_HEAVY</code></td>
+<td>50</td>
+<td>High-impact blocking</td>
+<td><code>socket.connect</code>, <code>subprocess.Popen</code>, <code>time.sleep</code>, DNS lookups</td>
+</tr>
+<tr>
+<td><code>WEIGHT_MODERATE</code></td>
+<td>10</td>
+<td>Medium-impact</td>
+<td><code>open()</code>, file mutations, <code>os.listdir</code></td>
+</tr>
+<tr>
+<td><code>WEIGHT_LIGHT</code></td>
+<td>1</td>
+<td>Low-impact</td>
+<td><code>os.stat</code>, <code>fcntl.flock</code>, <code>os.kill</code></td>
+</tr>
+<tr>
+<td><code>WEIGHT_TRIVIAL</code></td>
+<td>0</td>
+<td>Negligible</td>
+<td><code>os.getcwd</code>, <code>os.path.abspath</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="severity-levels">Severity Levels<a class="headerlink" href="#severity-levels" title="Permanent link">&para;</a></h3>
+<p>The aggregate score determines the severity level:</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Score Range</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"high"</code></td>
+<td>≥ 50</td>
+<td>Critical - likely to cause noticeable latency</td>
+</tr>
+<tr>
+<td><code>"medium"</code></td>
+<td>≥ 10</td>
+<td>Warning - may cause issues under load</td>
+</tr>
+<tr>
+<td><code>"low"</code></td>
+<td>&lt; 10</td>
+<td>Informational - minor impact</td>
+</tr>
+</tbody>
+</table>
+<h3 id="using-severity-in-callbacks">Using Severity in Callbacks<a class="headerlink" href="#using-severity-in-callbacks" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">on_slow_task</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">SlowTaskEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">severity_level</span> <span class="o">==</span> <span class="s2">"high"</span><span class="p">:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        <span class="n">alert_oncall</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="k">elif</span> <span class="n">event</span><span class="o">.</span><span class="n">severity_level</span> <span class="o">==</span> <span class="s2">"medium"</span><span class="p">:</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="n">log_warning</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        <span class="n">log_debug</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="manual-severity-calculation">Manual Severity Calculation<a class="headerlink" href="#manual-severity-calculation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Calculate severity from events</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">score</span> <span class="o">=</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">calculate_io_severity_score</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">blocking_events</span><span class="p">)</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># Get level from score</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">level</span> <span class="o">=</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">get_severity_level_from_score</span><span class="p">(</span><span class="n">score</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="dynamic-controls">Dynamic Controls<a class="headerlink" href="#dynamic-controls" title="Permanent link">&para;</a></h2>
+<h3 id="runtime-enabledisable">Runtime Enable/Disable<a class="headerlink" href="#runtime-enabledisable" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Useful for gradual rollout</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># 10% of requests</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">aiocop</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">aiocop</span><span class="o">.</span><span class="n">deactivate</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="environment-based-control">Environment-Based Control<a class="headerlink" href="#environment-based-control" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">"AIOCOP_ENABLED"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"true"</span><span class="p">:</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    <span class="n">aiocop</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="context-providers">Context Providers<a class="headerlink" href="#context-providers" title="Permanent link">&para;</a></h2>
+<p>Context providers capture additional context (like request IDs, tracing spans) that gets passed to callbacks.</p>
+<h3 id="why-context-providers">Why Context Providers?<a class="headerlink" href="#why-context-providers" title="Permanent link">&para;</a></h3>
+<p>Callbacks are invoked <strong>after</strong> the task completes. By then, context like the active tracing span may no longer be accessible. Context providers capture this data <strong>at the start</strong> of task execution.</p>
+<h3 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_context_provider</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="k">return</span> <span class="p">{</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>        <span class="s2">"request_id"</span><span class="p">:</span> <span class="n">get_current_request_id</span><span class="p">(),</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        <span class="s2">"user_id"</span><span class="p">:</span> <span class="n">get_current_user_id</span><span class="p">(),</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="p">}</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">register_context_provider</span><span class="p">(</span><span class="n">my_context_provider</span><span class="p">)</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">on_slow_task</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">SlowTaskEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    <span class="n">request_id</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"request_id"</span><span class="p">)</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Slow task in request </span><span class="si">{</span><span class="n">request_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="multiple-providers">Multiple Providers<a class="headerlink" href="#multiple-providers" title="Permanent link">&para;</a></h3>
+<p>Context from multiple providers is merged:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">provider_a</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">"key_a"</span><span class="p">:</span> <span class="s2">"value_a"</span><span class="p">}</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">provider_b</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">"key_b"</span><span class="p">:</span> <span class="s2">"value_b"</span><span class="p">}</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">register_context_provider</span><span class="p">(</span><span class="n">provider_a</span><span class="p">)</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">register_context_provider</span><span class="p">(</span><span class="n">provider_b</span><span class="p">)</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="c1"># event.context = {"key_a": "value_a", "key_b": "value_b"}</span>
+</code></pre></div>
+<h3 id="managing-providers">Managing Providers<a class="headerlink" href="#managing-providers" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">unregister_context_provider</span><span class="p">(</span><span class="n">my_provider</span><span class="p">)</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">clear_context_providers</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="raise-on-violations">Raise on Violations<a class="headerlink" href="#raise-on-violations" title="Permanent link">&para;</a></h2>
+<p>For strict enforcement during development, aiocop can raise exceptions on high-severity blocking I/O.</p>
+<h3 id="global-enable">Global Enable<a class="headerlink" href="#global-enable" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">enable_raise_on_violations</span><span class="p">()</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="c1"># Now high-severity blocking will raise HighSeverityBlockingIoException</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="k">await</span> <span class="n">some_operation</span><span class="p">()</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">disable_raise_on_violations</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="context-manager">Context Manager<a class="headerlink" href="#context-manager" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Only raise within this block</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="k">with</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">raise_on_violations</span><span class="p">():</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="k">await</span> <span class="n">some_operation</span><span class="p">()</span>  <span class="c1"># Raises if high-severity blocking detected</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="c1"># Outside the block, no exceptions raised</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="k">await</span> <span class="n">some_operation</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="check-status">Check Status<a class="headerlink" href="#check-status" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="k">if</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">is_raise_on_violations_enabled</span><span class="p">():</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"Strict mode enabled"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="the-exception">The Exception<a class="headerlink" href="#the-exception" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="k">with</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">raise_on_violations</span><span class="p">():</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Blocking!</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="k">except</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">HighSeverityBlockingIoException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Severity: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">severity_score</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Elapsed: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">elapsed_ms</span><span class="si">}</span><span class="s2">ms"</span><span class="p">)</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Events: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">events</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="event-types">Event Types<a class="headerlink" href="#event-types" title="Permanent link">&para;</a></h2>
+<h3 id="slowtaskevent">SlowTaskEvent<a class="headerlink" href="#slowtaskevent" title="Permanent link">&para;</a></h3>
+<p>The main event passed to callbacks.</p>
+<p><strong>Important:</strong> Callbacks are invoked for <strong>all tasks where blocking I/O is detected</strong>, regardless of whether the threshold was exceeded. The <code>exceeded_threshold</code> field tells you if the task was actually slow.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="k">class</span><span class="w"> </span><span class="nc">SlowTaskEvent</span><span class="p">:</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    <span class="n">elapsed_ms</span><span class="p">:</span> <span class="nb">float</span>        <span class="c1"># How long the task took</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="n">threshold_ms</span><span class="p">:</span> <span class="nb">float</span>      <span class="c1"># Configured threshold</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">exceeded_threshold</span><span class="p">:</span> <span class="nb">bool</span> <span class="c1"># True if elapsed &gt;= threshold</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="n">severity_score</span><span class="p">:</span> <span class="nb">int</span>      <span class="c1"># Aggregate severity score</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>    <span class="n">severity_level</span><span class="p">:</span> <span class="nb">str</span>      <span class="c1"># "low", "medium", or "high"</span>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>              <span class="c1"># "io_blocking" or "cpu_blocking"</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>    <span class="n">blocking_events</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BlockingEventInfo</span><span class="p">]</span>  <span class="c1"># Detected blocking operations</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>    <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># Context from providers (default: {})</span>
+</code></pre></div>
+<h3 id="when-callbacks-are-invoked">When Callbacks Are Invoked<a class="headerlink" href="#when-callbacks-are-invoked" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th><code>reason</code></th>
+<th><code>exceeded_threshold</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Blocking I/O detected, task was fast</td>
+<td><code>"io_blocking"</code></td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td>Blocking I/O detected, task was slow</td>
+<td><code>"io_blocking"</code></td>
+<td><code>True</code></td>
+</tr>
+<tr>
+<td>No blocking I/O, but task was slow</td>
+<td><code>"cpu_blocking"</code></td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
+<p>This means you can:
+- <strong>Log all blocking I/O</strong> (even fast ones) for analysis
+- <strong>Alert only on slow tasks</strong> by checking <code>exceeded_threshold</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">on_slow_task</span><span class="p">(</span><span class="n">event</span><span class="p">:</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">SlowTaskEvent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    <span class="c1"># Log all blocking I/O for debugging/analysis</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">reason</span> <span class="o">==</span> <span class="s2">"io_blocking"</span><span class="p">:</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>        <span class="n">log_blocking_io</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>    <span class="c1"># Only alert if the task was actually slow</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">exceeded_threshold</span><span class="p">:</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>        <span class="n">send_alert</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="blockingeventinfo">BlockingEventInfo<a class="headerlink" href="#blockingeventinfo" title="Permanent link">&para;</a></h3>
+<p>Details about each blocking operation:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">BlockingEventInfo</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="n">event</span><span class="p">:</span> <span class="nb">str</span>        <span class="c1"># e.g., "open(/path/to/file)"</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="n">trace</span><span class="p">:</span> <span class="nb">str</span>        <span class="c1"># Stack trace</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    <span class="n">entry_point</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># First frame in the trace</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    <span class="n">severity</span><span class="p">:</span> <span class="nb">int</span>     <span class="c1"># Weight of this event</span>
+</code></pre></div>
+<h2 id="monitored-operations">Monitored Operations<a class="headerlink" href="#monitored-operations" title="Permanent link">&para;</a></h2>
+<p>aiocop monitors a wide range of blocking operations:</p>
+<h3 id="network-operations">Network Operations<a class="headerlink" href="#network-operations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Weight</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DNS lookup</td>
+<td>Heavy</td>
+<td><code>socket.getaddrinfo</code>, <code>socket.gethostbyname</code></td>
+</tr>
+<tr>
+<td>Socket connect</td>
+<td>Heavy</td>
+<td><code>socket.socket.connect</code></td>
+</tr>
+<tr>
+<td>Socket I/O</td>
+<td>Moderate</td>
+<td><code>socket.socket.send</code>, <code>recv</code>, etc.</td>
+</tr>
+<tr>
+<td>SSL I/O</td>
+<td>Moderate</td>
+<td><code>ssl.SSLSocket.read</code>, <code>write</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="file-operations">File Operations<a class="headerlink" href="#file-operations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Weight</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Open file</td>
+<td>Moderate</td>
+<td><code>open</code></td>
+</tr>
+<tr>
+<td>List directory</td>
+<td>Moderate</td>
+<td><code>os.listdir</code>, <code>os.scandir</code></td>
+</tr>
+<tr>
+<td>Walk directory</td>
+<td>Heavy</td>
+<td><code>os.walk</code>, <code>glob.glob</code></td>
+</tr>
+<tr>
+<td>File mutations</td>
+<td>Moderate</td>
+<td><code>os.remove</code>, <code>os.rename</code>, etc.</td>
+</tr>
+<tr>
+<td>File stat</td>
+<td>Light</td>
+<td><code>os.stat</code>, <code>os.access</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="process-operations">Process Operations<a class="headerlink" href="#process-operations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Weight</th>
+<th>Event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subprocess</td>
+<td>Heavy</td>
+<td><code>subprocess.Popen</code>, <code>os.system</code></td>
+</tr>
+<tr>
+<td>Fork/exec</td>
+<td>Heavy</td>
+<td><code>os.fork</code>, <code>os.exec</code></td>
+</tr>
+<tr>
+<td>Sleep</td>
+<td>Heavy</td>
+<td><code>time.sleep</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="get-full-list">Get Full List<a class="headerlink" href="#get-full-list" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">events_dict</span> <span class="o">=</span> <span class="n">aiocop</span><span class="o">.</span><span class="n">get_blocking_events_dict</span><span class="p">()</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">for</span> <span class="n">event</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">events_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">event</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">weight</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="extending-aiocop-advanced">Extending aiocop (Advanced)<a class="headerlink" href="#extending-aiocop-advanced" title="Permanent link">&para;</a></h2>
+<p>For advanced users who need to monitor additional blocking operations, aiocop's internal dictionaries can be modified before setup.</p>
+<h3 id="adding-custom-audit-events">Adding Custom Audit Events<a class="headerlink" href="#adding-custom-audit-events" title="Permanent link">&para;</a></h3>
+<p>To listen for additional Python audit events (no patching required):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.core.blocking_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">BLOCKING_EVENTS_DICT</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.types.severity</span><span class="w"> </span><span class="kn">import</span> <span class="n">WEIGHT_MODERATE</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="c1"># Add before calling start_blocking_io_detection()</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="n">BLOCKING_EVENTS_DICT</span><span class="p">[</span><span class="s2">"my.custom.audit.event"</span><span class="p">]</span> <span class="o">=</span> <span class="n">WEIGHT_MODERATE</span>
+</code></pre></div>
+<p>This is safe for any audit event that Python's VM already emits. See <a href="https://docs.python.org/3/library/audit_events.html">Python's audit events documentation</a> for the full list.</p>
+<h3 id="adding-custom-functions-to-patch">Adding Custom Functions to Patch<a class="headerlink" href="#adding-custom-functions-to-patch" title="Permanent link">&para;</a></h3>
+<p>To wrap additional Python functions with audit event emission:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.core.audit_patcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">FUNCTIONS_TO_PATCH_DICT</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.types.severity</span><span class="w"> </span><span class="kn">import</span> <span class="n">WEIGHT_HEAVY</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="c1"># Add before calling patch_audit_functions()</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="n">FUNCTIONS_TO_PATCH_DICT</span><span class="p">[</span><span class="s2">"mylib.sync_http_call"</span><span class="p">]</span> <span class="o">=</span> <span class="n">WEIGHT_HEAVY</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="n">FUNCTIONS_TO_PATCH_DICT</span><span class="p">[</span><span class="s2">"legacy_module.blocking_operation"</span><span class="p">]</span> <span class="o">=</span> <span class="n">WEIGHT_MODERATE</span>
+</code></pre></div>
+<h3 id="important-limitations">Important Limitations<a class="headerlink" href="#important-limitations" title="Permanent link">&para;</a></h3>
+<p><strong>You can only patch pure Python functions.</strong> C-level built-in functions cannot be monkey-patched and will silently fail or cause crashes.</p>
+<table>
+<thead>
+<tr>
+<th>Can Patch</th>
+<th>Cannot Patch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mylib.my_function</code></td>
+<td><code>len</code>, <code>sum</code>, <code>sorted</code></td>
+</tr>
+<tr>
+<td><code>json.dumps</code> (Python wrapper)</td>
+<td><code>str.encode</code> (C method)</td>
+</tr>
+<tr>
+<td><code>configparser.read</code></td>
+<td><code>list.append</code> (C method)</td>
+</tr>
+<tr>
+<td>Third-party pure Python code</td>
+<td>Most built-in types' methods</td>
+</tr>
+</tbody>
+</table>
+<p><strong>How to tell if a function is patchable:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="k">def</span><span class="w"> </span><span class="nf">is_patchable</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="w">    </span><span class="sd">"""Check if a function can be safely patched."""</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>        <span class="c1"># Built-in functions implemented in C</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="nb">len</span><span class="p">)):</span>
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>            <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>        <span class="c1"># Methods of built-in types</span>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">encode</span><span class="p">)):</span>
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>            <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>        <span class="c1"># Has Python source code</span>
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>        <span class="k">return</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isfunction</span><span class="p">(</span><span class="n">func</span><span class="p">)</span> <span class="ow">or</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>    <span class="k">except</span><span class="p">:</span>
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>        <span class="k">return</span> <span class="kc">False</span>
+<a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a>
+<a id="__codelineno-26-17" name="__codelineno-26-17" href="#__codelineno-26-17"></a><span class="c1"># Examples</span>
+<a id="__codelineno-26-18" name="__codelineno-26-18" href="#__codelineno-26-18"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<a id="__codelineno-26-19" name="__codelineno-26-19" href="#__codelineno-26-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_patchable</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">))</span>  <span class="c1"># True - Python wrapper</span>
+<a id="__codelineno-26-20" name="__codelineno-26-20" href="#__codelineno-26-20"></a><span class="nb">print</span><span class="p">(</span><span class="n">is_patchable</span><span class="p">(</span><span class="nb">len</span><span class="p">))</span>          <span class="c1"># False - C built-in</span>
+</code></pre></div>
+<h3 id="example-monitoring-a-custom-library">Example: Monitoring a Custom Library<a class="headerlink" href="#example-monitoring-a-custom-library" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.core.audit_patcher</span><span class="w"> </span><span class="kn">import</span> <span class="n">FUNCTIONS_TO_PATCH_DICT</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.core.blocking_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">BLOCKING_EVENTS_DICT</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">aiocop.types.severity</span><span class="w"> </span><span class="kn">import</span> <span class="n">WEIGHT_HEAVY</span><span class="p">,</span> <span class="n">WEIGHT_MODERATE</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">aiocop</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a><span class="c1"># 1. Add custom functions BEFORE setup</span>
+<a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a><span class="n">FUNCTIONS_TO_PATCH_DICT</span><span class="p">[</span><span class="s2">"requests.get"</span><span class="p">]</span> <span class="o">=</span> <span class="n">WEIGHT_HEAVY</span>
+<a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a><span class="n">FUNCTIONS_TO_PATCH_DICT</span><span class="p">[</span><span class="s2">"requests.post"</span><span class="p">]</span> <span class="o">=</span> <span class="n">WEIGHT_HEAVY</span>
+<a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a><span class="n">FUNCTIONS_TO_PATCH_DICT</span><span class="p">[</span><span class="s2">"myapp.legacy.sync_db_query"</span><span class="p">]</span> <span class="o">=</span> <span class="n">WEIGHT_MODERATE</span>
+<a id="__codelineno-27-10" name="__codelineno-27-10" href="#__codelineno-27-10"></a>
+<a id="__codelineno-27-11" name="__codelineno-27-11" href="#__codelineno-27-11"></a><span class="c1"># 2. These will also be added to BLOCKING_EVENTS_DICT automatically</span>
+<a id="__codelineno-27-12" name="__codelineno-27-12" href="#__codelineno-27-12"></a><span class="c1"># when patch_audit_functions() is called</span>
+<a id="__codelineno-27-13" name="__codelineno-27-13" href="#__codelineno-27-13"></a>
+<a id="__codelineno-27-14" name="__codelineno-27-14" href="#__codelineno-27-14"></a><span class="c1"># 3. Normal setup</span>
+<a id="__codelineno-27-15" name="__codelineno-27-15" href="#__codelineno-27-15"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">patch_audit_functions</span><span class="p">()</span>
+<a id="__codelineno-27-16" name="__codelineno-27-16" href="#__codelineno-27-16"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">start_blocking_io_detection</span><span class="p">()</span>
+<a id="__codelineno-27-17" name="__codelineno-27-17" href="#__codelineno-27-17"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">detect_slow_tasks</span><span class="p">(</span><span class="n">threshold_ms</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<a id="__codelineno-27-18" name="__codelineno-27-18" href="#__codelineno-27-18"></a><span class="n">aiocop</span><span class="o">.</span><span class="n">activate</span><span class="p">()</span>
+</code></pre></div>
+<p><strong>Note:</strong> This is an advanced feature. The internal APIs may change between versions. If you find yourself needing to monitor many custom operations, please <a href="https://github.com/feverup/aiocop/issues">open an issue</a> - we'd love to hear your use case!</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/feverup/aiocop" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/aiocop/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
