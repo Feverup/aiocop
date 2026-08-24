@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # The aiocop package directory, used to exclude aiocop's own frames from
 # samples. A path-prefix match, unlike a substring check, cannot swallow user
 # code that happens to live under a directory with "aiocop" in its name.
-_AIOCOP_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep + "aiocop" + os.sep
+_AIOCOP_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep
 
 _sampler_started = False
 _main_thread_id: int | None = None

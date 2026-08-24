@@ -53,6 +53,10 @@ class TestCpuSamplingSetup:
         assert hasattr(aiocop, "start_cpu_sampling")
         assert hasattr(aiocop, "is_cpu_sampling_started")
 
+    def test_package_dir_matches_the_installed_package(self) -> None:
+        """The frame filter only works if the prefix is the real package dir."""
+        assert cpu_sampler.__file__.startswith(cpu_sampler._AIOCOP_PACKAGE_DIR)
+
     def test_start_is_idempotent(self, setup_aiocop_with_sampler) -> None:
         assert aiocop.is_cpu_sampling_started() is True
         aiocop.start_cpu_sampling()  # second call must be a no-op
@@ -81,6 +85,9 @@ class TestCpuSampling:
 
         top_traces = " || ".join(sample["trace"] for sample in samples)
         assert "_burn_cpu" in top_traces
+        # aiocop's own frames (e.g. monitored_wrapper) must be filtered out
+        assert "monitored_wrapper" not in top_traces
+        assert "slow_tasks.py" not in top_traces
 
     def test_fast_slices_get_no_samples(self, setup_aiocop_with_sampler, captured_events) -> None:
         async def fast_handler() -> None:
