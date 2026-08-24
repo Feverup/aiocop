@@ -43,6 +43,7 @@ SlowTaskCallback = Callable[[SlowTaskEvent], None]
 def detect_slow_tasks(
     threshold_ms: int = 30,
     on_slow_task: SlowTaskCallback | None = None,
+    cpu_sampling: bool = True,
 ) -> None:
     """
     Configure slow task detection for the asyncio event loop.
@@ -62,6 +63,10 @@ def detect_slow_tasks(
         on_slow_task: Optional callback invoked when blocking IO is detected in a task.
                       The callback receives a SlowTaskEvent with exceeded_threshold indicating
                       if the threshold was exceeded.
+        cpu_sampling: Start CPU stack sampling so cpu_blocking events carry
+                      stack attribution (default: True). Sampling arms at half
+                      of threshold_ms; call start_cpu_sampling() before this
+                      function to customize, or pass False to disable.
 
     Should be called after start_blocking_io_detection().
     """
@@ -86,6 +91,9 @@ def detect_slow_tasks(
     register_on_activate_hook(_ensure_loop_patched)
 
     _ensure_loop_patched()
+
+    if cpu_sampling is True and cpu_sampler.is_cpu_sampling_started() is False:
+        cpu_sampler.start_cpu_sampling()
 
 
 def _ensure_loop_patched() -> bool:

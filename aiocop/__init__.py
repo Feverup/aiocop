@@ -17,13 +17,13 @@ Basic Usage:
         if event.exceeded_threshold:
             print(f"Slow task: {event.elapsed_ms}ms, severity: {event.severity_level}")
 
+    # Also starts CPU stack sampling (cpu_sampling=True by default), so
+    # cpu_blocking events carry stack attribution like IO events do. To
+    # customize sampling, call aiocop.start_cpu_sampling(...) BEFORE this;
+    # to disable it, pass cpu_sampling=False.
     aiocop.detect_slow_tasks(threshold_ms=30, on_slow_task=my_callback)
 
-    # 4. (Optional) Sample the main thread's stack during CPU-bound slices,
-    #    so cpu_blocking events carry stack attribution like IO events do
-    aiocop.start_cpu_sampling(interval_ms=10, arm_after_ms=15)
-
-    # 5. Activate monitoring when ready (e.g., after startup)
+    # 4. Activate monitoring when ready (e.g., after startup)
     aiocop.activate()
 
 Dynamic Controls:

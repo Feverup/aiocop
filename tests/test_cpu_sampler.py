@@ -22,8 +22,10 @@ def setup_aiocop_with_sampler():
     """
     aiocop.patch_audit_functions()
     aiocop.start_blocking_io_detection(trace_depth=10)
-    aiocop.detect_slow_tasks(threshold_ms=30)
+    # Explicit sampler config must precede detect_slow_tasks, whose default
+    # cpu_sampling=True would otherwise auto-start with default parameters.
     aiocop.start_cpu_sampling(interval_ms=5, arm_after_ms=10, idle_interval_ms=20)
+    aiocop.detect_slow_tasks(threshold_ms=30)
     yield
     aiocop.deactivate()
     aiocop.clear_slow_task_callbacks()
@@ -193,8 +195,8 @@ class TestForkSafety:
 
             aiocop.patch_audit_functions()
             aiocop.start_blocking_io_detection(trace_depth=5)
-            aiocop.detect_slow_tasks(threshold_ms=30)
             aiocop.start_cpu_sampling(interval_ms=5, arm_after_ms=10, idle_interval_ms=20)
+            aiocop.detect_slow_tasks(threshold_ms=30)
             time.sleep(0.05)
 
             pid = os.fork()
@@ -237,3 +239,84 @@ class TestForkSafety:
 
         assert result.returncode == 0, result.stderr
         assert "CHILD watchdog_alive=True sampled=True" in result.stdout, (result.stdout, result.stderr)
+
+
+class TestDefaultOn:
+    def _run(self, script: str) -> str:
+        result = subprocess.run(
+            [sys.executable, "-c", textwrap.dedent(script)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout
+
+    def test_detect_slow_tasks_starts_sampling_with_derived_arm(self) -> None:
+        """cpu_sampling defaults to True and arms at threshold_ms / 2.
+
+        Subprocess: sampler start is once-per-process, and this module's
+        fixture already started it here.
+        """
+        out = self._run(
+            """
+            import aiocop
+            from aiocop.core import cpu_sampler
+
+            aiocop.detect_slow_tasks(threshold_ms=100)
+            print(f"started={aiocop.is_cpu_sampling_started()} arm_ns={cpu_sampler._arm_after_ns}", flush=True)
+            """
+        )
+        assert "started=True arm_ns=50000000" in out
+
+    def test_cpu_sampling_false_disables_the_auto_start(self) -> None:
+        out = self._run(
+            """
+            import aiocop
+
+            aiocop.detect_slow_tasks(threshold_ms=30, cpu_sampling=False)
+            print(f"started={aiocop.is_cpu_sampling_started()}", flush=True)
+            """
+        )
+        assert "started=False" in out
+
+    def test_explicit_start_before_detect_wins_over_the_auto_start(self) -> None:
+        out = self._run(
+            """
+            import aiocop
+            from aiocop.core import cpu_sampler
+
+            aiocop.start_cpu_sampling(arm_after_ms=7)
+            aiocop.detect_slow_tasks(threshold_ms=100)
+            print(f"arm_ns={cpu_sampler._arm_after_ns}", flush=True)
+            """
+        )
+        assert "arm_ns=7000000" in out
+
+
+class TestNonMainThreadLoop:
+    def test_loop_running_off_the_main_thread_is_sampled(self, setup_aiocop_with_sampler, captured_events) -> None:
+        """The watchdog samples the thread that published the slice, so an
+        event loop running outside the main thread still gets attribution."""
+        import threading
+
+        async def handler() -> None:
+            await asyncio.sleep(0)
+            _burn_cpu(0.08)
+
+        async def main() -> None:
+            aiocop.activate()
+            await asyncio.create_task(handler())
+            await asyncio.sleep(0)
+
+        worker = threading.Thread(target=lambda: asyncio.run(main()))
+        worker.start()
+        worker.join(timeout=10)
+        assert worker.is_alive() is False
+
+        slow = [e for e in captured_events if e.exceeded_threshold and e.reason == "cpu_blocking"]
+        assert len(slow) > 0
+
+        samples = slow[0].cpu_stack_samples
+        assert len(samples) > 0
+        assert "_burn_cpu" in " || ".join(sample["trace"] for sample in samples)

@@ -3,7 +3,7 @@
 Blocking IO events get stack attribution from the audit hook, but a callback
 slice that freezes the loop with pure CPU work (reason="cpu_blocking") carries
 no clue about where the time went. This module closes that gap: a watchdog
-daemon thread samples the main thread's stack while a monitored callback has
+daemon thread samples the loop thread's stack while a monitored callback has
 been running longer than an arming delay, and the samples are attached to the
 resulting SlowTaskEvent.
 
@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 _AIOCOP_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep
 
 _sampler_started = False
-_main_thread_id: int | None = None
 
 _interval_s: float = 0.010
 _idle_interval_s: float = 0.050
@@ -49,7 +48,11 @@ _trace_depth: int = 20
 # Written by the event loop thread (monitored_wrapper), read by the watchdog.
 # Single int stores/reads are atomic under the GIL. 0 means "no active slice";
 # any other value is the slice's perf_counter_ns start time, used as its id.
+# The thread id is written BEFORE the slice id, so a watchdog that observes a
+# published slice always reads a thread id belonging to it (loops may run on
+# any thread, not only the main one).
 _current_slice_id: int = 0
+_current_slice_thread_id: int = 0
 
 # Written by the watchdog, read by the event loop thread. The unlocked read of
 # _samples_slice_id on the hot path is a fast-exit hint only; ownership of
@@ -61,7 +64,7 @@ _samples: list[list[tuple[str, int, str]]] = []
 
 def start_cpu_sampling(
     interval_ms: int = 10,
-    arm_after_ms: int = 15,
+    arm_after_ms: int | None = None,
     idle_interval_ms: int = 50,
     max_samples_per_slice: int = 32,
     trace_depth: int = 20,
@@ -69,26 +72,34 @@ def start_cpu_sampling(
     """
     Start the CPU stack sampling watchdog thread.
 
+    Started automatically by detect_slow_tasks() unless it is called with
+    cpu_sampling=False. Call this explicitly BEFORE detect_slow_tasks() only
+    to customize the parameters below (the automatic start is skipped when
+    sampling is already running).
+
     Args:
         interval_ms: Sampling interval while a slice is running (default: 10ms).
         arm_after_ms: Minimum age of the current slice before sampling starts.
-            Slices shorter than this are never sampled (default: 15ms).
+            Slices shorter than this are never sampled. Defaults to half the
+            slow-task threshold, so any slice that reaches the threshold has
+            been under sampling for the second half of its life.
         idle_interval_ms: Watchdog wake-up interval while no slice is running,
             trading idle CPU for sampling start latency (default: 50ms).
         max_samples_per_slice: Cap on samples kept per slice (default: 32).
         trace_depth: Number of stack frames captured per sample (default: 20).
-
-    Optional — without it aiocop behaves exactly as before and cpu_blocking
-    events carry no stack samples. Should be called after detect_slow_tasks().
     """
-    global _sampler_started, _main_thread_id, _interval_s, _idle_interval_s, _arm_after_ns
+    global _sampler_started, _interval_s, _idle_interval_s, _arm_after_ns
     global _max_samples_per_slice, _trace_depth
 
     if _sampler_started is True:
         logger.warning("start_cpu_sampling called more than once, ignoring")
         return
 
-    _main_thread_id = threading.main_thread().ident
+    if arm_after_ms is None:
+        from aiocop.core.slow_tasks import get_slow_task_threshold_ms
+
+        arm_after_ms = max(1, int(get_slow_task_threshold_ms() // 2))
+
     _interval_s = interval_ms / 1000
     _idle_interval_s = idle_interval_ms / 1000
     _arm_after_ns = arm_after_ms * 1_000_000
@@ -119,26 +130,31 @@ def _reinit_after_fork() -> None:
     Runs while the child is still single-threaded. The inherited lock may have
     been held by the parent's watchdog at fork time, so a fresh lock is the
     only safe option; slice state is reset because any in-flight slice or
-    pending samples belong to the parent. The main-thread id is re-read since
-    the child's main thread is whichever thread called fork() in the parent.
+    pending samples belong to the parent. The sampled thread needs no reset:
+    it is re-published per slice by _slice_started.
     """
-    global _samples_lock, _current_slice_id, _samples_slice_id, _main_thread_id
+    global _samples_lock, _current_slice_id, _current_slice_thread_id, _samples_slice_id
 
     if _sampler_started is not True:
         return
 
     _samples_lock = threading.Lock()
     _current_slice_id = 0
+    _current_slice_thread_id = 0
     _samples_slice_id = 0
     _samples.clear()
-    _main_thread_id = threading.main_thread().ident
 
     threading.Thread(target=_watchdog_loop, name="aiocop-cpu-sampler", daemon=True).start()
 
 
 def _slice_started(slice_id: int) -> None:
-    """Publish the current slice to the watchdog. Called on the hot path."""
-    global _current_slice_id
+    """Publish the current slice to the watchdog. Called on the hot path.
+
+    The thread id is written before the slice id: the slice id acts as the
+    publish flag, so the watchdog never pairs a slice with a stale thread.
+    """
+    global _current_slice_id, _current_slice_thread_id
+    _current_slice_thread_id = threading.get_ident()
     _current_slice_id = slice_id
 
 
@@ -182,7 +198,7 @@ def _watchdog_loop() -> None:
         if (time.perf_counter_ns() - slice_id) < _arm_after_ns:
             continue
 
-        stack = _capture_main_thread_stack()
+        stack = _capture_thread_stack(_current_slice_thread_id)
         if not stack:
             continue
 
@@ -226,8 +242,8 @@ def format_cpu_samples(raw_samples: list[list[tuple[str, int, str]]]) -> list[Cp
     return formatted
 
 
-def _capture_main_thread_stack() -> list[tuple[str, int, str]]:
-    frame = sys._current_frames().get(_main_thread_id)
+def _capture_thread_stack(thread_id: int) -> list[tuple[str, int, str]]:
+    frame = sys._current_frames().get(thread_id)
 
     captured_frames = []
     try:
