@@ -1,5 +1,9 @@
 # History
 
+## 1.2.1 (2026-10-15)
+
+* Add Python 3.14 support: classifier, CI matrix entry and `UV_PYTHON` pinning of the CI interpreter; no library changes were needed (#17)
+
 ## 1.2.0 (2026-08-24)
 
 * New feature: **CPU stack sampling** — a watchdog daemon thread samples the loop thread's stack during CPU-bound slices, attaching aggregated stacks with counts to `SlowTaskEvent.cpu_stack_samples`, so `cpu_blocking` events carry attribution like IO events do
